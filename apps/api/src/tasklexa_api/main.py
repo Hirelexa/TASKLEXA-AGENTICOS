@@ -41,7 +41,7 @@ async def health() -> HealthResponse:
         service=settings.service_name,
         status="LIVE",
         environment=settings.environment,
-        phase="phase-10-human-approval",
+        phase="phase-11-verifier",
     )
 
 

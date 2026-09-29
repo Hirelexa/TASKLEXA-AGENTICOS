@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tasklexa_api.domain.enums import ApprovalStatus, ExecutionEventStatus, ExecutionEventType, MissionStatus
 from tasklexa_api.domain.errors import MissionNotFoundError
-from tasklexa_api.models.decision import Approval, Decision
+from tasklexa_api.models.decision import Approval, Conflict, Decision
 from tasklexa_api.models.execution_event import ExecutionEvent
 from tasklexa_api.repositories.missions import get_mission, transition_mission
 from tasklexa_api.schemas.decision import DecisionCreate
@@ -79,4 +79,9 @@ async def list_decisions_for_mission(session: AsyncSession, mission_id: uuid.UUI
 
 async def list_approvals_for_decision(session: AsyncSession, decision_id: uuid.UUID) -> list[Approval]:
     result = await session.execute(select(Approval).where(Approval.decision_id == decision_id))
+    return list(result.scalars().all())
+
+
+async def list_conflicts_for_mission(session: AsyncSession, mission_id: uuid.UUID) -> list[Conflict]:
+    result = await session.execute(select(Conflict).where(Conflict.mission_id == mission_id))
     return list(result.scalars().all())

@@ -12,10 +12,16 @@ from tasklexa_api.repositories.execution_events import list_events_for_mission
 from tasklexa_api.repositories.graph_projection import project_mission
 from tasklexa_api.repositories.missions import create_mission, get_mission, list_missions, transition_mission
 from tasklexa_api.repositories.team_plans import resolve_team_for_mission
+from tasklexa_api.repositories.verification import (
+    get_verification_report,
+    list_verification_reports_for_mission,
+    run_verification,
+)
 from tasklexa_api.schemas.agent import AgentTeamPlan
 from tasklexa_api.schemas.execution_event import ExecutionEventRead
 from tasklexa_api.schemas.graph import MissionGraph, ProjectionReport
 from tasklexa_api.schemas.mission import MissionCreate, MissionRead
+from tasklexa_api.schemas.verification import VerificationReportRead
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 
@@ -114,3 +120,44 @@ async def get_mission_graph_endpoint(
     if mission is None:
         raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
     return await get_graph_service().get_mission_graph(mission_id)
+
+
+@router.post("/{mission_id}/verify", response_model=VerificationReportRead)
+async def verify_mission_endpoint(
+    mission_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> VerificationReportRead:
+    """Run an independent verification pass and, if it PASSED or FAILED while
+    the mission is VERIFYING, apply the corresponding mission transition.
+
+    Safe to call more than once - each call produces its own report; only a
+    call made while the mission is actually VERIFYING can change mission
+    status (see repositories.verification.run_verification).
+    """
+    try:
+        report = await run_verification(session, mission_id)
+    except MissionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return VerificationReportRead.model_validate(report)
+
+
+@router.get("/{mission_id}/verification-reports", response_model=list[VerificationReportRead])
+async def list_verification_reports_endpoint(
+    mission_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[VerificationReportRead]:
+    mission = await get_mission(session, mission_id)
+    if mission is None:
+        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
+    reports = await list_verification_reports_for_mission(session, mission_id)
+    return [VerificationReportRead.model_validate(report) for report in reports]
+
+
+@router.get("/{mission_id}/verification-reports/{report_id}", response_model=VerificationReportRead)
+async def get_verification_report_endpoint(
+    mission_id: uuid.UUID, report_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> VerificationReportRead:
+    report = await get_verification_report(session, report_id)
+    if report is None or report.mission_id != mission_id:
+        raise HTTPException(
+            status_code=404, detail=f"VerificationReport {report_id} not found in mission {mission_id}"
+        )
+    return VerificationReportRead.model_validate(report)

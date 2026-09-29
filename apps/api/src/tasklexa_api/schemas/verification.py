@@ -1,9 +1,16 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from tasklexa_api.domain.enums import VerificationStatus
+
+
+class VerificationEvaluation(BaseModel):
+    verification_status: VerificationStatus
+    criteria_results: list[dict] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
+    confidence: float
 
 
 class VerificationReportRead(BaseModel):

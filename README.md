@@ -10,13 +10,12 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 10 (Human approval) is complete. Creating a `Decision` with
-`approval_required=true` moves a mission to `WAITING_APPROVAL` and blocks
-task dispatch until an operator resolves it via `approve`/`modify` (resumes
-to `RUNNING`) or `reject` (terminal `CANCELLED`). This phase also found and
-fixed a real bug from Phase 3: the mission state machine didn't actually
-match `docs/architecture.md`'s own documented diagram — see ADR-021.
-Awaiting approval to begin Phase 11 (Verifier).
+Phase 11 (Verifier) is complete. `POST /missions/{id}/verify` runs a
+deterministic, independent check (unsettled tasks, failed tasks, unresolved
+conflicts, pending approvals, evidence vs. declared success criteria) and
+only completes a mission when it actually passes — `VERIFYING → COMPLETED`
+on `PASSED`, `VERIFYING → FAILED` on `FAILED`, no transition on `PARTIAL`.
+Awaiting approval to begin Phase 12 (Mission Control UI).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -34,6 +33,7 @@ Awaiting approval to begin Phase 11 (Verifier).
 - [Phase 8 report](docs/phase-8.md)
 - [Phase 9 report](docs/phase-9.md)
 - [Phase 10 report](docs/phase-10.md)
+- [Phase 11 report](docs/phase-11.md)
 
 ## Local Development
 

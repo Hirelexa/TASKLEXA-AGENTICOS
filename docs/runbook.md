@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 10 complete. Approval blocking and resume commands implemented. Also corrected a real bug found this phase: Phase 3's mission state machine didn't match docs/architecture.md's own documented diagram (ADR-021, supersedes ADR-010).
+Status: Phase 11 complete. Independent Verifier implemented and live-verified through all three outcomes (PASSED completes the mission, FAILED fails it, PARTIAL leaves it in VERIFYING for re-verification).
 
 ## Phase 0 Commands Run
 
@@ -266,6 +266,28 @@ Phase 10 test results:
 - Fresh-volume verification: all containers `healthy`.
 - Full combined regression (every mocked + every live test file across all ten phases, one process): passing.
 - `alembic check`: no drift (no schema change this phase).
+- Compile check across all new/changed modules: passed.
+
+## Phase 11 Commands Run
+
+- `python -m unittest apps.api.tests.test_verification_evaluation` (10 pure tests)
+- `python -m unittest tests.integration.test_verifier` — first run caught a real gap: tasks created without `required_capabilities` never dispatch at all (empty capability list means the resolver never assigns them), which cascaded into wrong PASSED/FAILED/PARTIAL outcomes. Fixed the test (added real capabilities to every task, matching every other phase's tests), not the implementation.
+- `python -m unittest discover apps/api/tests` (107 tests, confirming no regressions)
+- `docker compose down -v` then `docker compose up -d --build` (fresh volumes; no new migration this phase)
+- Full combined run: every mocked test file plus every live integration test file across all eleven phases, together in one process
+- `alembic check`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 11 test results:
+
+- Pure verification-evaluation unit tests: 10/10 passing, zero DB dependency.
+- Live PASSED test: passing — dispatch, complete, dispatch again (auto-transition to VERIFYING), verify, mission COMPLETED.
+- Live FAILED test: passing — one completed task, one explicitly failed task, verification reports FAILED, mission moves to FAILED.
+- Live PARTIAL test: passing — success_criteria declared with zero evidence, mission stays VERIFYING across two separate verify calls, each producing its own report.
+- Full mocked regression (107 tests): passing, no regressions.
+- Fresh-volume verification: all containers healthy (no schema change this phase).
+- Full combined regression (every mocked + every live test file across all eleven phases, one process): 107 + 13 passing.
+- `alembic check`: no drift.
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target
