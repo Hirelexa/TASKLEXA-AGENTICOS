@@ -1,6 +1,5 @@
-import { MissionControlShell } from "@/components/mission-control-shell";
+import { Dashboard } from "@/components/dashboard";
 
 export default function Home() {
-  return <MissionControlShell />;
+  return <Dashboard />;
 }
-
