@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-IntegrationStatus = Literal["LIVE", "MOCK", "NOT_CONFIGURED", "FAILED"]
+IntegrationStatus = Literal["LIVE", "MOCK", "NOT_CONFIGURED", "FAILED", "UNVERIFIED"]
 
 
 class IntegrationHealth(BaseModel):

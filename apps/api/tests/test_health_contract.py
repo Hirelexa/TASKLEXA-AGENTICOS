@@ -28,11 +28,25 @@ class HealthContractTests(unittest.TestCase):
         self.assertIn("/health/integrations", route_paths)
 
     def test_integration_status_labels_are_visible_contract(self) -> None:
-        health_file = ROOT / "src" / "tasklexa_api" / "health.py"
-        source = health_file.read_text()
+        import sys
 
-        for label in ("LIVE", "MOCK", "NOT_CONFIGURED", "FAILED"):
-            self.assertIn(label, source)
+        sys.path.insert(0, str(ROOT / "src"))
+        from tasklexa_api.schemas.health import IntegrationStatus
+
+        labels = set(IntegrationStatus.__args__)
+        self.assertTrue(labels)
+
+        # Provider-specific status logic lives in health.py plus each
+        # integrations/*/*.py adapter module (e.g. MOCK/UNVERIFIED for
+        # Similarweb live only in integrations/similarweb/tool.py, not
+        # health.py) - so every label must appear somewhere across all of
+        # them, not necessarily in any single file.
+        source_files = [ROOT / "src" / "tasklexa_api" / "health.py"]
+        source_files.extend((ROOT / "src" / "tasklexa_api" / "integrations").rglob("*.py"))
+        combined_source = "\n".join(path.read_text() for path in source_files)
+
+        missing = [label for label in labels if label not in combined_source]
+        self.assertEqual(missing, [], f"status labels never referenced in integration code: {missing}")
 
 
 if __name__ == "__main__":

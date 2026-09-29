@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 8 complete. Mission Orchestrator executes the task dependency graph, dispatches ready tasks, and handles failure/cascade/replan — verified live end to end, including a Redis-backed dispatch lock verified to actually contend against the real Redis container.
+Status: Phase 9 complete. `SimilarwebTool` implemented against the documented interface; deliberately never makes a live call under any credential state (docs require this, not just caution) since MCP/REST schemas remain unconfirmed. First real `ToolDefinition` row in the project, discoverable via `GET /tools` and the Capability Resolver.
 
 ## Phase 0 Commands Run
 
@@ -221,6 +221,28 @@ Phase 8 test results:
 - Live Redis lock contention test: passing — a second lock attempt on the same key genuinely fails against the real Redis container while the first still holds it, not just against the mock.
 - Fresh-volume verification: all five PostgreSQL migrations applied automatically; all containers `healthy`.
 - Full combined regression (every mocked + every live test file across all eight phases, one process): passing.
+- `alembic check`: no drift.
+- Compile check across all new/changed modules: passed.
+
+## Phase 9 Commands Run
+
+- `alembic revision -m "seed similarweb tool definition"` then hand-written `op.bulk_insert` with explicit Postgres enum casts, matching Phase 5's agent-seed pattern
+- `alembic upgrade head`
+- `python -m unittest apps.api.tests.test_similarweb_tool_mocked` (16 tests, offline)
+- `python -m unittest tests.integration.test_tool_registry_api`
+- `docker compose down -v` then `docker compose up -d --build` (fresh volumes, six migrations)
+- `curl http://127.0.0.1:8000/tools` and `curl http://127.0.0.1:8000/health/integrations` against the rebuilt container
+- Full combined run: every mocked test file plus every live integration test file across all nine phases, together in one process
+- `alembic check`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 9 test results:
+
+- Mocked `SimilarwebTool` unit tests: 16/16 passing, zero network access. Every status branch (`NOT_CONFIGURED`, `UNVERIFIED`, `MOCK`) and every call method's refusal/demo-data path covered.
+- Live Tool Registry test: passing against the actual running container — seeded tool listed and fetchable by id with correct capabilities and `NOT_CONFIGURED` status, 404 on an unknown id, `/health/integrations` cross-checked.
+- Fresh-volume verification: all six migrations applied automatically (five prior phases' plus this phase's tool seed); all containers `healthy`.
+- Full combined regression (every mocked + every live test file across all nine phases, one process): passing.
+- Fixed a real bug surfaced by adding the `UNVERIFIED` status: `test_health_contract.py`'s label-visibility check hardcoded a scan of `health.py` alone, which broke as soon as a status label started living in a provider adapter module instead. Rewrote to derive expected labels from `IntegrationStatus` itself and scan `health.py` plus every `integrations/*/*.py` module.
 - `alembic check`: no drift.
 - Compile check across all new/changed modules: passed.
 

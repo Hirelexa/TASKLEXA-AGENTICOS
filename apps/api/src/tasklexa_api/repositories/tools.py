@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,3 +13,7 @@ async def list_tool_definitions(session: AsyncSession, available_only: bool = Fa
         query = query.where(ToolDefinition.status == ToolStatus.AVAILABLE)
     result = await session.execute(query)
     return list(result.scalars().all())
+
+
+async def get_tool_definition(session: AsyncSession, tool_id: uuid.UUID) -> ToolDefinition | None:
+    return await session.get(ToolDefinition, tool_id)

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from tasklexa_api.api.agents import router as agents_router
 from tasklexa_api.api.missions import router as missions_router
 from tasklexa_api.api.tasks import orchestrator_router, router as tasks_router
+from tasklexa_api.api.tools import router as tools_router
 from tasklexa_api.config import get_settings
 from tasklexa_api.health import HealthResponse, IntegrationsHealthResponse, collect_integration_health
 
@@ -27,6 +28,7 @@ app.include_router(missions_router)
 app.include_router(agents_router)
 app.include_router(tasks_router)
 app.include_router(orchestrator_router)
+app.include_router(tools_router)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -35,7 +37,7 @@ async def health() -> HealthResponse:
         service=settings.service_name,
         status="LIVE",
         environment=settings.environment,
-        phase="phase-8-mission-orchestrator",
+        phase="phase-9-similarweb-tool-integration",
     )
 
 

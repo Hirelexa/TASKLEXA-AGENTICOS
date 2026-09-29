@@ -29,6 +29,21 @@ class ProviderCallFailedError(Exception):
         super().__init__(f"{provider} call failed: {detail}")
 
 
+class ProviderUnverifiedError(Exception):
+    """A credential is present, but the integration's endpoint/schema is not confirmed.
+
+    Distinct from ProviderNotConfiguredError (no credential at all) and
+    ProviderCallFailedError (a real call was attempted and failed) - this
+    means a live call is deliberately never attempted because there is
+    nothing verified to call against yet.
+    """
+
+    def __init__(self, provider: str, detail: str) -> None:
+        self.provider = provider
+        self.detail = detail
+        super().__init__(f"{provider} is UNVERIFIED: {detail}")
+
+
 class StructuredOutputValidationError(Exception):
     def __init__(self, schema_name: str, detail: str) -> None:
         self.schema_name = schema_name

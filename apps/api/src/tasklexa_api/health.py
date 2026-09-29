@@ -4,6 +4,7 @@ from tasklexa_api.config import Settings
 from tasklexa_api.integrations.band.adapter import BandAdapter
 from tasklexa_api.integrations.neo4j.dependency import get_graph_service
 from tasklexa_api.integrations.openrouter.gateway import ModelGateway
+from tasklexa_api.integrations.similarweb.tool import SimilarwebTool
 from tasklexa_api.schemas.health import (
     HealthResponse,
     IntegrationHealth,
@@ -75,19 +76,14 @@ async def collect_integration_health(settings: Settings) -> list[IntegrationHeal
         await gateway.aclose()
         await band.aclose()
 
+    similarweb_health = await SimilarwebTool(
+        api_key=settings.similarweb_api_key, demo_mode=settings.demo_mode
+    ).health()
+
     external_checks = [
         band_health,
         openrouter_health,
-        IntegrationHealth(
-            provider="Similarweb",
-            purpose="Discoverable digital intelligence tool",
-            status="MOCK" if settings.demo_mode else "NOT_CONFIGURED",
-            details=(
-                "DEMO_MODE is enabled; any Similarweb demo response must be labeled DEMO DATA."
-                if settings.demo_mode
-                else "Credential is missing; Similarweb remains unavailable."
-            ),
-        ),
+        similarweb_health,
         configured_but_unverified(
             "Vultr Kubernetes Engine",
             "Future deployment target",

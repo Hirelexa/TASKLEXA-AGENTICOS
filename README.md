@@ -10,12 +10,13 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 8 (Mission Orchestrator) is complete. The orchestrator executes a
-mission's task dependency graph, dispatches ready tasks to agents resolved
-via the Phase 5 Capability Resolver, cascades and replans failures, and
-auto-transitions a mission to `VERIFYING` once every task settles — guarded
-by a Redis-backed lock so concurrent dispatch calls can't race. Awaiting
-approval to begin Phase 9 (Similarweb tool integration).
+Phase 9 (Similarweb tool integration) is complete. `SimilarwebTool`
+implements the full documented interface but — per `docs/architecture.md`'s
+own explicit rule, since neither MCP nor REST schemas are confirmed for this
+provider — never makes a live network call under any credential state; only
+`DEMO_MODE` returns labeled data. Similarweb is also the project's first
+real `ToolDefinition` row, discoverable via `GET /tools` and by the Phase 5
+Capability Resolver. Awaiting approval to begin Phase 10 (Human approval).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -31,6 +32,7 @@ approval to begin Phase 9 (Similarweb tool integration).
 - [Phase 6 report](docs/phase-6.md)
 - [Phase 7 report](docs/phase-7.md)
 - [Phase 8 report](docs/phase-8.md)
+- [Phase 9 report](docs/phase-9.md)
 
 ## Local Development
 
