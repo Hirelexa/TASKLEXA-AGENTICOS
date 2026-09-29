@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 4 complete. OpenRouter `ModelGateway` adapter implemented, `NOT_CONFIGURED` (no credential), fully covered by mocked unit tests, with a live test gate ready for whenever a real `OPENROUTER_API_KEY` exists.
+Status: Phase 5 complete. Agent Registry seeded with five generic agent definitions and queryable via API; Capability Resolver dynamically assembles a mission team from required capabilities, verified live against the real container.
 
 ## Phase 0 Commands Run
 
@@ -139,6 +139,27 @@ Phase 4 test results:
 - Live test gate (`test_model_gateway_live.py`): 2/2 skipped, correctly, with an explicit reason — no `OPENROUTER_API_KEY` in this environment.
 - `GET /health/integrations` in the rebuilt container: OpenRouter still reports `NOT_CONFIGURED`, now via the real `ModelGateway.health()` call path instead of the Phase 1 placeholder.
 - Existing Phase 2/3 tests (persistence roundtrip, Mission API lifecycle, health contract): all still passing against the rebuilt image.
+- Compile check across all new/changed modules: passed.
+
+## Phase 5 Commands Run
+
+- `alembic revision -m "seed generic agent definitions"` then hand-written `op.bulk_insert` with explicit Postgres enum casts (`agent_definition_risk_level`, `agent_definition_status`)
+- `alembic upgrade head`
+- `alembic check`
+- `python -m unittest apps.api.tests.test_capability_resolver` (pure, no DB)
+- `docker compose down -v` then `docker compose up -d --build` (fresh-volume verification, four migrations including the seed)
+- `docker compose logs api` (confirm all four migrations run before Uvicorn starts)
+- `python -m unittest tests.integration.test_agent_registry_and_team_plan`
+- Full combined run: every mocked test file (`apps/api/tests`) plus every live integration test file (`tests/integration`) together in one process — this is what exposed the event-loop engine-caching bug (ADR-014)
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 5 test results:
+
+- Pure capability resolver unit tests: 7/7 passing, no DB dependency.
+- Fresh-volume verification: passed. All four migrations applied automatically, including the agent-definition seed; five rows present with `psql` confirming exact capability arrays.
+- `alembic check`: passed, no drift (data-only migration, no schema change expected).
+- Live Agent Registry + team-plan test: passed against the real running container — `GET /agents` lists all five seeds, `POST /missions/{id}/team-plan` correctly matches 2 of 3 requested capabilities and reports the third as unresolved, exactly two `AGENT_SELECTED` events recorded.
+- Full combined regression (all mocked + all live test files in one process): passed after fixing the event-loop-scoped engine cache (ADR-014); this combination is exactly what had failed before the fix.
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target

@@ -105,3 +105,11 @@ Decision: `select_model()` raises `ValueError` if called with an empty `preferre
 Rationale: `docs/architecture.md` explicitly says "Do not hard-code unverified model IDs" and lists "exact model policy defaults require a live model catalog and account limits" as an open question. No model catalog has been fetched live, and no account limits are known, so there is no ID this repo could hard-code responsibly.
 
 Consequence: Whatever calls `select_model()` next (the Capability Resolver, Phase 5) is responsible for sourcing `preferred_models` from `AgentDefinition.preferred_model_policy` or an equivalent live-verified source — not from a constant in this codebase.
+
+## ADR-014: Database Engine Cache Is Keyed by Event Loop, Not Global
+
+Decision: `tasklexa_api.db.session.get_engine()` caches one `AsyncEngine` per running event loop (keyed by `id(asyncio.get_event_loop())`), instead of a single process-wide `@lru_cache`d instance.
+
+Rationale: An `AsyncEngine`'s connection pool is bound to whichever event loop was running when it was created. A single, unconditionally cached engine works fine for the real deployed app (uvicorn runs one event loop for its entire process lifetime), but breaks the moment a single test process runs more than one independent `asyncio.run()` call that touches `tasklexa_api.main.app` — the second call's fresh event loop inherits a connection pool tied to the first call's already-closed loop, raising `RuntimeError: ... attached to a different loop`. This was found while adding Phase 5's second live-integration test file.
+
+Consequence: Any new live/integration test file that exercises the FastAPI app through its own `asyncio.run()` call is now safe to add without hitting this failure — verified by running every mocked and live test file together in one process. No change to production behavior: a real deployment still gets exactly one cached engine, since it only ever has one event loop.

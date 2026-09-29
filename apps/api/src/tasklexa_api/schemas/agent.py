@@ -6,6 +6,17 @@ from pydantic import BaseModel, ConfigDict, Field
 from tasklexa_api.domain.enums import AgentDefinitionStatus, AgentExecutionStatus, RiskLevel
 
 
+class AgentDefinitionCreate(BaseModel):
+    name: str
+    description: str
+    capabilities: list[str] = Field(default_factory=list)
+    allowed_tools: list[str] = Field(default_factory=list)
+    preferred_model_policy: dict | None = None
+    permissions: list[str] = Field(default_factory=list)
+    risk_level: RiskLevel = RiskLevel.LOW
+    provider: str
+
+
 class AgentDefinitionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

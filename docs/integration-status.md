@@ -1,6 +1,6 @@
 # Integration Status
 
-Status: Phase 4 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verified `LIVE` under Docker Compose. PostgreSQL holds the full migrated domain model with immutable execution events, a Mission create/read API with a deterministic state machine is live, and the OpenRouter `ModelGateway` adapter is implemented with full mocked coverage. No live external provider integration tests have been run — every external provider remains `NOT_CONFIGURED` in this environment.
+Status: Phase 5 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verified `LIVE` under Docker Compose. PostgreSQL holds the full migrated domain model with immutable execution events, a Mission create/read API with a deterministic state machine is live, the OpenRouter `ModelGateway` adapter is implemented with full mocked coverage, and the Agent Registry (five seeded generic agents) plus Capability Resolver are live and verified against the real running container. No live external provider integration tests have been run — every external provider remains `NOT_CONFIGURED` in this environment.
 
 | Provider | Purpose | Documentation | Authentication | Implementation Status | Test Status | Last Verification | Known Limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |

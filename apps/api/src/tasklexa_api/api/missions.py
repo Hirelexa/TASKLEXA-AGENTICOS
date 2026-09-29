@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tasklexa_api.db.session import get_session
@@ -9,6 +9,8 @@ from tasklexa_api.domain.enums import MissionStatus
 from tasklexa_api.domain.errors import InvalidMissionTransitionError, MissionNotFoundError
 from tasklexa_api.repositories.execution_events import list_events_for_mission
 from tasklexa_api.repositories.missions import create_mission, get_mission, list_missions, transition_mission
+from tasklexa_api.repositories.team_plans import resolve_team_for_mission
+from tasklexa_api.schemas.agent import AgentTeamPlan
 from tasklexa_api.schemas.execution_event import ExecutionEventRead
 from tasklexa_api.schemas.mission import MissionCreate, MissionRead
 
@@ -17,6 +19,10 @@ router = APIRouter(prefix="/missions", tags=["missions"])
 
 class MissionTransitionRequest(BaseModel):
     status: MissionStatus
+
+
+class TeamPlanRequest(BaseModel):
+    required_capabilities: list[str] = Field(default_factory=list)
 
 
 @router.post("", response_model=MissionRead, status_code=201)
@@ -67,3 +73,15 @@ async def list_mission_events_endpoint(
         raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
     events = await list_events_for_mission(session, mission_id)
     return [ExecutionEventRead.model_validate(event) for event in events]
+
+
+@router.post("/{mission_id}/team-plan", response_model=AgentTeamPlan)
+async def resolve_team_plan_endpoint(
+    mission_id: uuid.UUID,
+    payload: TeamPlanRequest,
+    session: AsyncSession = Depends(get_session),
+) -> AgentTeamPlan:
+    try:
+        return await resolve_team_for_mission(session, mission_id, payload.required_capabilities)
+    except MissionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
