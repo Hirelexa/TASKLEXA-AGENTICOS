@@ -2,6 +2,8 @@
 
 Status: complete. `ModelGateway` adapter implemented against the interface specified in `docs/architecture.md`'s OpenRouter integration contract, reporting `NOT_CONFIGURED` with zero network calls when no credential is present, mocked unit tests covering every method, and a separate live test gate that skips cleanly without a real `OPENROUTER_API_KEY`.
 
+**Update (Phase 12):** a real `OPENROUTER_API_KEY` was added to this project's local `.env` for the first time. `GET /health/integrations` reports OpenRouter `LIVE` — "Authenticated call to GET /models succeeded" — and both tests in `test_model_gateway_live.py` ran and passed for the first time (previously always skipped). This is the first external provider in this project verified against its real API. The Known Limitations note below about nothing being exercised against a real response is now resolved for `health()`/`list_models()` specifically; `complete()`/`complete_structured()`/`estimate_cost()` still haven't been exercised live.
+
 ## Deliverables
 
 - `tasklexa_api.integrations.openrouter.client.OpenRouterClient`: thin async wrapper over `httpx.AsyncClient` for `GET /models` and `POST /chat/completions` against `https://openrouter.ai/api/v1`, with Bearer auth. Accepts an injectable `httpx.AsyncBaseTransport`, which is how the mocked tests avoid any real network access.
@@ -31,6 +33,6 @@ Status: complete. `ModelGateway` adapter implemented against the interface speci
 
 ## Known Limitations
 
-- **Nothing here has been exercised against the real OpenRouter API.** Request/response parsing (`_parse_completion`, the `response_format` shape, the `/models` catalog shape) is built strictly from the documentation bullets in `docs/architecture.md`, not from a live call. The first real credential this project gets should run the live test gate before this adapter is trusted for anything user-facing.
+- ~~Nothing here has been exercised against the real OpenRouter API.~~ **Resolved for `health()`/`list_models()` in Phase 12** — a real credential confirmed both against the actual API. `complete()`/`complete_structured()` (the `_parse_completion` and `response_format` shapes) still haven't been exercised against a live chat completion response — that requires actually sending a completion request, which nothing in this codebase does yet (no caller).
 - No caller uses `ModelGateway` yet — no route, no Mission Compiler. Phase 4 scope per `docs/architecture.md` was the adapter itself ("Implement adapter with NOT_CONFIGURED status. Add mocked unit tests and separate live test gate"), not wiring it into the orchestration flow. That's Phase 5+.
 - `estimate_cost()` is intentionally a stub (see Design Notes) until pricing metadata shape is verified live.

@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 11 complete. Independent Verifier implemented and live-verified through all three outcomes (PASSED completes the mission, FAILED fails it, PARTIAL leaves it in VERIFYING for re-verification).
+Status: Phase 12 complete — the full planned build (Phases 1-12) is done. Mission Control UI implemented and browser-verified end to end via a real headless-Chromium run (Playwright, installed only in the scratchpad, never added to the project's own package.json). OpenRouter also went LIVE for the first time in this project with a real credential added mid-phase.
 
 ## Phase 0 Commands Run
 
@@ -289,6 +289,27 @@ Phase 11 test results:
 - Full combined regression (every mocked + every live test file across all eleven phases, one process): 107 + 13 passing.
 - `alembic check`: no drift.
 - Compile check across all new/changed modules: passed.
+
+## Phase 12 Commands Run
+
+- Added `GET /missions/{id}/evidence` and `GET /missions/{id}/evidence/{id}` (backend) — the one new endpoint this phase's UI needed that didn't exist yet
+- `npm run typecheck` and `npm run build` in `apps/web`
+- `docker compose build web` then `docker compose up -d web` (rebuild the frontend container with Phase 12 code)
+- Installed Playwright + Chromium into the session scratchpad (not `apps/web/package.json`) purely for one-time verification
+- Two Playwright driver scripts: one walking the dashboard, Agents & Tools page, mission creation, and all 8 empty-state tabs; a second doing a full populated lifecycle (transitions, task creation, dispatch, graph projection, decision+approval creation) plus a third confirming the approve action actually resumed the mission
+- Manually inspected the resulting screenshots (not just checked for thrown errors) and cross-checked one ambiguous screenshot directly against the API
+- Cleaned up all Playwright-created test missions from both PostgreSQL and Neo4j afterward
+- Full backend regression: `python -m unittest discover apps/api/tests` plus all eight integration test files together in one process
+- `python -m unittest apps.api.tests.test_model_gateway_live` — ran for the first time ever with a real `OPENROUTER_API_KEY`, both tests passing
+
+Phase 12 test results:
+
+- Frontend build/typecheck: both clean.
+- Live browser verification: zero console errors across every step of both driver runs. Dashboard, Agents & Tools, mission creation, all 8 tabs, task dispatch (confirmed `DISPATCHED` to `research-agent`), graph projection (confirmed real `Mission→Task→Agent→Capability` nodes and labeled edges rendered), decision-requiring-approval (confirmed mission moved to `WAITING_APPROVAL`), and approve (confirmed mission resumed to `RUNNING`) all verified against real data, not mocks.
+- One screenshot showed a stale approval state; cross-checked directly against the API and confirmed the actual operation succeeded — a script timing artifact, not an app bug.
+- New evidence endpoint: manually smoke-tested against the real running container (empty list on a fresh mission, 404 on an unknown id) before being wired into the UI.
+- Backend regression: 107 mocked tests + 13 live integration tests, all still passing after the evidence-endpoint addition.
+- **OpenRouter live credential**: `GET /health/integrations` reports `LIVE`; both previously-always-skipped live tests in `test_model_gateway_live.py` now pass.
 
 ## Local Development Target
 

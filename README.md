@@ -10,12 +10,13 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 11 (Verifier) is complete. `POST /missions/{id}/verify` runs a
-deterministic, independent check (unsettled tasks, failed tasks, unresolved
-conflicts, pending approvals, evidence vs. declared success criteria) and
-only completes a mission when it actually passes — `VERIFYING → COMPLETED`
-on `PASSED`, `VERIFYING → FAILED` on `FAILED`, no transition on `PARTIAL`.
-Awaiting approval to begin Phase 12 (Mission Control UI).
+Phase 12 (Mission Control UI) is complete — this closes the full planned
+build (Phases 1–12). The Next.js frontend at `apps/web` now has a real
+dashboard, mission creation, an 8-tab mission detail view (Overview, Tasks,
+Team, Decisions & Approvals, Evidence, Timeline, Verification, Graph), and
+an Agent/Tool registry, all backed by the live API — browser-verified end
+to end (see `docs/phase-12.md`). OpenRouter also went `LIVE` for the first
+time in this project with a real credential.
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -34,6 +35,7 @@ Awaiting approval to begin Phase 12 (Mission Control UI).
 - [Phase 9 report](docs/phase-9.md)
 - [Phase 10 report](docs/phase-10.md)
 - [Phase 11 report](docs/phase-11.md)
+- [Phase 12 report](docs/phase-12.md)
 
 ## Local Development
 
