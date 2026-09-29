@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 9 complete. `SimilarwebTool` implemented against the documented interface; deliberately never makes a live call under any credential state (docs require this, not just caution) since MCP/REST schemas remain unconfirmed. First real `ToolDefinition` row in the project, discoverable via `GET /tools` and the Capability Resolver.
+Status: Phase 10 complete. Approval blocking and resume commands implemented. Also corrected a real bug found this phase: Phase 3's mission state machine didn't match docs/architecture.md's own documented diagram (ADR-021, supersedes ADR-010).
 
 ## Phase 0 Commands Run
 
@@ -244,6 +244,28 @@ Phase 9 test results:
 - Full combined regression (every mocked + every live test file across all nine phases, one process): passing.
 - Fixed a real bug surfaced by adding the `UNVERIFIED` status: `test_health_contract.py`'s label-visibility check hardcoded a scan of `health.py` alone, which broke as soon as a status label started living in a provider adapter module instead. Rewrote to derive expected labels from `IntegrationStatus` itself and scan `health.py` plus every `integrations/*/*.py` module.
 - `alembic check`: no drift.
+- Compile check across all new/changed modules: passed.
+
+## Phase 10 Commands Run
+
+- Re-read `docs/architecture.md`'s "Mission State Machine" section closely while implementing `WAITING_APPROVAL` edges, found it didn't match `domain/state_machine.py`
+- `python -m unittest apps.api.tests.test_mission_state_machine` (9 tests, including a set-equality check pinning every documented edge)
+- `python -m unittest discover apps/api/tests` (97 tests, confirming the state-machine fix caused no regressions)
+- `python -m unittest tests.integration.test_human_approval` (both live approval-lifecycle tests)
+- `docker compose down -v` then `docker compose up -d --build` (fresh volumes; no new migration this phase)
+- Full combined run: every mocked test file plus every live integration test file across all ten phases, together in one process
+- `alembic check`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 10 test results:
+
+- State machine unit tests: 9/9 passing. `test_no_undocumented_edges_exist` pins the entire transition graph against the documented diagram as an exact set match, not just a check that known-good edges validate.
+- Full mocked regression (97 tests): passing — the state-machine correction (removing three undocumented `→ CANCELLED` edges, removing `WAITING_APPROVAL → FAILED`, adding `RUNNING → PLANNING`) broke nothing already covered.
+- Live approval lifecycle test: passing against the actual running containers — dispatch works while `RUNNING`, blocked with 409 during `WAITING_APPROVAL`, a second gated decision correctly also rejected while paused, approval resumes dispatch, double-resolving an approval 409s, full event trail confirmed.
+- Live rejection-is-terminal test: passing — `CANCELLED` confirmed to have no resume path.
+- Fresh-volume verification: all containers `healthy`.
+- Full combined regression (every mocked + every live test file across all ten phases, one process): passing.
+- `alembic check`: no drift (no schema change this phase).
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target

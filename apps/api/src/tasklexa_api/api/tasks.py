@@ -8,6 +8,7 @@ from tasklexa_api.domain.errors import (
     InvalidTaskTransitionError,
     LockAcquisitionError,
     MissionNotFoundError,
+    MissionPausedError,
     TaskNotFoundError,
 )
 from tasklexa_api.repositories.missions import get_mission
@@ -123,5 +124,5 @@ async def dispatch_endpoint(
         return await run_dispatch_cycle(session, mission_id)
     except MissionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except LockAcquisitionError as exc:
+    except (LockAcquisitionError, MissionPausedError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

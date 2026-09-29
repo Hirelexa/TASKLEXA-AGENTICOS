@@ -1,9 +1,28 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from tasklexa_api.domain.enums import ApprovalStatus, ConflictStatus, DecisionStatus, RiskLevel
+
+
+class DecisionCreate(BaseModel):
+    mission_id: uuid.UUID
+    title: str
+    description: str | None = None
+    options: list = Field(default_factory=list)
+    recommendation: str | None = None
+    evidence_ids: list[uuid.UUID] = Field(default_factory=list)
+    confidence: float | None = None
+    risk_level: RiskLevel = RiskLevel.LOW
+    approval_required: bool = False
+    requested_by: str
+    approval_reason: str | None = None
+
+
+class ApprovalDecisionRequest(BaseModel):
+    approved_by: str
+    comments: str | None = None
 
 
 class DecisionRead(BaseModel):

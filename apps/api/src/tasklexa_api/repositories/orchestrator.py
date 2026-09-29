@@ -15,6 +15,7 @@ from tasklexa_api.domain.errors import (
     InvalidMissionTransitionError,
     InvalidTaskTransitionError,
     MissionNotFoundError,
+    MissionPausedError,
     TaskNotFoundError,
 )
 from tasklexa_api.domain.orchestrator import compute_task_readiness
@@ -40,6 +41,11 @@ async def run_dispatch_cycle(session: AsyncSession, mission_id: uuid.UUID) -> Di
     mission = await get_mission(session, mission_id)
     if mission is None:
         raise MissionNotFoundError(mission_id)
+    if mission.status == MissionStatus.WAITING_APPROVAL:
+        # docs/domain-model.md: "PENDING approvals pause mission execution for
+        # the relevant action... No action gated by approval may execute
+        # before approval or modification is recorded."
+        raise MissionPausedError(mission_id)
 
     lock = RedisLock(get_redis_client(), f"mission-dispatch:{mission_id}")
     async with lock:

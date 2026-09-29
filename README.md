@@ -10,13 +10,13 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 9 (Similarweb tool integration) is complete. `SimilarwebTool`
-implements the full documented interface but — per `docs/architecture.md`'s
-own explicit rule, since neither MCP nor REST schemas are confirmed for this
-provider — never makes a live network call under any credential state; only
-`DEMO_MODE` returns labeled data. Similarweb is also the project's first
-real `ToolDefinition` row, discoverable via `GET /tools` and by the Phase 5
-Capability Resolver. Awaiting approval to begin Phase 10 (Human approval).
+Phase 10 (Human approval) is complete. Creating a `Decision` with
+`approval_required=true` moves a mission to `WAITING_APPROVAL` and blocks
+task dispatch until an operator resolves it via `approve`/`modify` (resumes
+to `RUNNING`) or `reject` (terminal `CANCELLED`). This phase also found and
+fixed a real bug from Phase 3: the mission state machine didn't actually
+match `docs/architecture.md`'s own documented diagram — see ADR-021.
+Awaiting approval to begin Phase 11 (Verifier).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -33,6 +33,7 @@ Capability Resolver. Awaiting approval to begin Phase 10 (Human approval).
 - [Phase 7 report](docs/phase-7.md)
 - [Phase 8 report](docs/phase-8.md)
 - [Phase 9 report](docs/phase-9.md)
+- [Phase 10 report](docs/phase-10.md)
 
 ## Local Development
 

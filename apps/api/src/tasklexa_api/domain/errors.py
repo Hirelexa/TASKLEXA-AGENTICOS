@@ -68,3 +68,33 @@ class LockAcquisitionError(Exception):
     def __init__(self, key: str) -> None:
         self.key = key
         super().__init__(f"Could not acquire lock '{key}'; another operation is already in progress")
+
+
+class DecisionNotFoundError(Exception):
+    def __init__(self, decision_id: uuid.UUID) -> None:
+        self.decision_id = decision_id
+        super().__init__(f"Decision {decision_id} not found")
+
+
+class ApprovalNotFoundError(Exception):
+    def __init__(self, approval_id: uuid.UUID) -> None:
+        self.approval_id = approval_id
+        super().__init__(f"Approval {approval_id} not found")
+
+
+class InvalidApprovalTransitionError(Exception):
+    def __init__(self, approval_id: uuid.UUID, detail: str) -> None:
+        self.approval_id = approval_id
+        self.detail = detail
+        super().__init__(f"Approval {approval_id}: {detail}")
+
+
+class MissionPausedError(Exception):
+    """docs/domain-model.md: 'PENDING approvals pause mission execution for the
+    relevant action... No action gated by approval may execute before approval
+    or modification is recorded.'
+    """
+
+    def __init__(self, mission_id: uuid.UUID) -> None:
+        self.mission_id = mission_id
+        super().__init__(f"Mission {mission_id} is WAITING_APPROVAL; dispatch is paused until resolved")
