@@ -10,11 +10,12 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 5 (Agent Registry and Capability Resolver) is complete. Five generic,
-sector-agnostic agent definitions are seeded and queryable via
-`GET /agents`, and `POST /missions/{id}/team-plan` dynamically resolves a
-mission's required capabilities against them (and against tools, once any
-exist). Awaiting approval to begin Phase 6 (Neo4j Mission Graph).
+Phase 6 (Neo4j Mission Graph) is complete. `GraphService` projects mission
+state from PostgreSQL into Neo4j with idempotent writes — every write is a
+Cypher `MERGE`, so `POST /missions/{id}/graph/project` is both the initial
+projection and its own repair path. `GET /missions/{id}/graph` returns the
+full mission subgraph. Awaiting approval to begin Phase 7 (Band
+collaboration).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -27,6 +28,7 @@ exist). Awaiting approval to begin Phase 6 (Neo4j Mission Graph).
 - [Phase 3 report](docs/phase-3.md)
 - [Phase 4 report](docs/phase-4.md)
 - [Phase 5 report](docs/phase-5.md)
+- [Phase 6 report](docs/phase-6.md)
 
 ## Local Development
 

@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 5 complete. Agent Registry seeded with five generic agent definitions and queryable via API; Capability Resolver dynamically assembles a mission team from required capabilities, verified live against the real container.
+Status: Phase 6 complete. `GraphService` implemented and verified live: idempotent PostgreSQL-to-Neo4j projection, a repair path (same function, called again), and `/health/integrations` performing a real Cypher query for Neo4j.
 
 ## Phase 0 Commands Run
 
@@ -160,6 +160,28 @@ Phase 5 test results:
 - `alembic check`: passed, no drift (data-only migration, no schema change expected).
 - Live Agent Registry + team-plan test: passed against the real running container — `GET /agents` lists all five seeds, `POST /missions/{id}/team-plan` correctly matches 2 of 3 requested capabilities and reports the third as unresolved, exactly two `AGENT_SELECTED` events recorded.
 - Full combined regression (all mocked + all live test files in one process): passed after fixing the event-loop-scoped engine cache (ADR-014); this combination is exactly what had failed before the fix.
+- Compile check across all new/changed modules: passed.
+
+## Phase 6 Commands Run
+
+- `.venv/bin/pip install --upgrade -e apps/api` (adds the `neo4j` official Python driver)
+- `python -m unittest apps.api.tests.test_graph_service_mocked` (13 tests against a hand-rolled fake driver, no network)
+- `docker compose build api` then `docker compose up -d api`
+- `curl http://127.0.0.1:8000/health/integrations` (confirm Neo4j goes through the real `GraphService.health()` Cypher query)
+- `python -m unittest tests.integration.test_neo4j_mission_graph` (live projection, repair-idempotency check, capability lookup, cleanup of both databases)
+- `docker compose down -v` then `docker compose up -d --build` (fresh volumes for both PostgreSQL and Neo4j)
+- Full combined run: every mocked test file plus every live integration test file (persistence, Mission API, Agent Registry, Neo4j graph) together in one process
+- `alembic check` (confirm Phase 6 introduced no PostgreSQL schema drift)
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 6 test results:
+
+- Mocked `GraphService` unit tests: 13/13 passing, zero network access. Caught a real bug (`_mutate()`'s `summary` parameter colliding with the Cypher `summary` param in `add_outcome`) before it ever reached a live query.
+- Live projection/repair test: passing against the actual containers. Second projection call on the same mission produces byte-for-byte identical node and relationship counts to the first — idempotency verified, not assumed.
+- `GET /health/integrations` in the rebuilt container: Neo4j reports `LIVE` via `RETURN 1` over an authenticated driver session.
+- Fresh-volume verification with both PostgreSQL and Neo4j starting empty: all containers `healthy`, all four PostgreSQL migrations applied automatically.
+- Full combined regression (every mocked + every live test file, one process): passing — confirms the event-loop-scoped caching pattern (ADR-014) also covers the new Neo4j driver cache.
+- `alembic check`: no drift (Phase 6 made no PostgreSQL schema changes).
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target

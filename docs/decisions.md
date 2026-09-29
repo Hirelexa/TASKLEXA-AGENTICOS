@@ -113,3 +113,19 @@ Decision: `tasklexa_api.db.session.get_engine()` caches one `AsyncEngine` per ru
 Rationale: An `AsyncEngine`'s connection pool is bound to whichever event loop was running when it was created. A single, unconditionally cached engine works fine for the real deployed app (uvicorn runs one event loop for its entire process lifetime), but breaks the moment a single test process runs more than one independent `asyncio.run()` call that touches `tasklexa_api.main.app` — the second call's fresh event loop inherits a connection pool tied to the first call's already-closed loop, raising `RuntimeError: ... attached to a different loop`. This was found while adding Phase 5's second live-integration test file.
 
 Consequence: Any new live/integration test file that exercises the FastAPI app through its own `asyncio.run()` call is now safe to add without hitting this failure — verified by running every mocked and live test file together in one process. No change to production behavior: a real deployment still gets exactly one cached engine, since it only ever has one event loop.
+
+## ADR-015: `Action` and `Outcome` Are Not Reconcilable From PostgreSQL
+
+Decision: `GraphService.add_outcome()` and `add_tool_usage()` exist (the documented `GraphService` interface requires them) but are never called by `project_mission()`, Phase 6's projection/repair function.
+
+Rationale: `docs/domain-model.md`'s Graph Projection section and its top-level `GOAL -> MISSION -> ... -> ACTION -> VERIFICATION -> OUTCOME` flow diagram both reference `Action` and `Outcome`, but neither was ever given a `## Action` / `## Outcome` Fields section the way `Mission`, `Task`, `Evidence`, `Decision`, etc. were — so Phase 2 never created tables for them. Similarly, no entity anywhere records "agent X used tool Y during task Z" (`ToolDefinition` exists; a per-use event does not). There is nothing in PostgreSQL for a repair pass to read.
+
+Consequence: These two methods accept minimal, caller-supplied input (`OutcomeInput`, `ToolUsageInput`) and write directly to Neo4j with no PostgreSQL source of truth behind them — a deliberate, documented exception to [[ADR-002]]/[[ADR-003]] ("PostgreSQL remains authoritative"). Nothing in this codebase currently calls either method. Whichever future phase actually needs Action/Outcome/tool-usage-event persistence (most likely Phase 8's Orchestrator or Phase 11's Verifier) must first add the missing PostgreSQL tables and update `project_mission()` to source from them — at which point this ADR should be revisited or superseded, not left standing.
+
+## ADR-016: `find_agents_by_capability` / `find_related_evidence` Return Graph-Native Types
+
+Decision: `GraphService.find_agents_by_capability()` returns `list[GraphAgentRef]` and `find_related_evidence()` returns `list[GraphEvidenceRef]` — minimal schemas mirroring exactly what's stored as Neo4j node properties — rather than the full `list[AgentDefinition]` / `list[Evidence]` the documented interface signature names.
+
+Rationale: Neo4j only ever receives a *projection* ([[ADR-002]]/[[ADR-003]]: full records live in PostgreSQL). Making `GraphService` return the full domain objects would require it to also query PostgreSQL by the ids it finds in the graph — turning a single-purpose Neo4j adapter into something that depends on both external systems, and blurring exactly the "Neo4j is not a second source of truth for full content" boundary those ADRs exist to enforce.
+
+Consequence: A caller that needs the authoritative full record hydrates it separately, using the existing PostgreSQL repositories (`repositories.agents.get_agent_definition`, `repositories.evidence` — the id from a `GraphAgentRef`/`GraphEvidenceRef` is the same id used everywhere else in this system) with the id returned here. No route in this codebase does that hydration yet; `GET /agents/by-capability/{capability}` returns the graph-native `GraphAgentRef` list directly, and its docstring says so.

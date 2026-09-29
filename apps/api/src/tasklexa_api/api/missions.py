@@ -7,11 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tasklexa_api.db.session import get_session
 from tasklexa_api.domain.enums import MissionStatus
 from tasklexa_api.domain.errors import InvalidMissionTransitionError, MissionNotFoundError
+from tasklexa_api.integrations.neo4j.dependency import get_graph_service
 from tasklexa_api.repositories.execution_events import list_events_for_mission
+from tasklexa_api.repositories.graph_projection import project_mission
 from tasklexa_api.repositories.missions import create_mission, get_mission, list_missions, transition_mission
 from tasklexa_api.repositories.team_plans import resolve_team_for_mission
 from tasklexa_api.schemas.agent import AgentTeamPlan
 from tasklexa_api.schemas.execution_event import ExecutionEventRead
+from tasklexa_api.schemas.graph import MissionGraph, ProjectionReport
 from tasklexa_api.schemas.mission import MissionCreate, MissionRead
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -85,3 +88,29 @@ async def resolve_team_plan_endpoint(
         return await resolve_team_for_mission(session, mission_id, payload.required_capabilities)
     except MissionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{mission_id}/graph/project", response_model=ProjectionReport)
+async def project_mission_graph_endpoint(
+    mission_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ProjectionReport:
+    """Rebuild this mission's Neo4j projection from PostgreSQL.
+
+    Every write is idempotent, so this is also the graph projection repair
+    path: call it again after a failure and it converges to the current
+    PostgreSQL state without duplicating anything.
+    """
+    try:
+        return await project_mission(session, mission_id)
+    except MissionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{mission_id}/graph", response_model=MissionGraph)
+async def get_mission_graph_endpoint(
+    mission_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> MissionGraph:
+    mission = await get_mission(session, mission_id)
+    if mission is None:
+        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
+    return await get_graph_service().get_mission_graph(mission_id)

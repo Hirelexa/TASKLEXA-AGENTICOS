@@ -1,6 +1,7 @@
 import asyncio
 
 from tasklexa_api.config import Settings
+from tasklexa_api.integrations.neo4j.dependency import get_graph_service
 from tasklexa_api.integrations.openrouter.gateway import ModelGateway
 from tasklexa_api.schemas.health import (
     HealthResponse,
@@ -61,7 +62,7 @@ async def collect_integration_health(settings: Settings) -> list[IntegrationHeal
     local_checks = await asyncio.gather(
         tcp_health("PostgreSQL", "Transactional application state", settings.postgres_host, settings.postgres_port),
         tcp_health("Redis", "Transient execution state and cache", settings.redis_host, settings.redis_port),
-        tcp_health("Neo4j", "Mission relationship graph", settings.neo4j_host, settings.neo4j_bolt_port),
+        get_graph_service().health(),
     )
 
     gateway = ModelGateway(api_key=settings.openrouter_api_key)
