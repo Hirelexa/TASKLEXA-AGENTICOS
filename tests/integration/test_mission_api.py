@@ -39,7 +39,7 @@ def _httpx_available() -> bool:
 
 
 @unittest.skipUnless(_database_reachable(), "PostgreSQL is not reachable; run under docker compose to verify.")
-@unittest.skipUnless(_httpx_available(), "httpx is not installed; install apps/api[test] extras.")
+@unittest.skipUnless(_httpx_available(), "httpx is not installed; install apps/api.")
 class MissionApiTests(unittest.TestCase):
     def test_mission_lifecycle_through_http(self) -> None:
         import httpx

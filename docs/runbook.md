@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 3 complete. Mission create/read API live and verified through real HTTP calls against `docker compose up`, backed by a deterministic state machine and the immutable execution-event log.
+Status: Phase 4 complete. OpenRouter `ModelGateway` adapter implemented, `NOT_CONFIGURED` (no credential), fully covered by mocked unit tests, with a live test gate ready for whenever a real `OPENROUTER_API_KEY` exists.
 
 ## Phase 0 Commands Run
 
@@ -122,6 +122,24 @@ Phase 3 test results:
 - Direct `curl` against the running `api` container: passed, returned a valid `MissionRead` JSON body.
 - Existing Phase 2 persistence test and health contract tests: still passing, unaffected.
 - Compile check across all new modules: passed.
+
+## Phase 4 Commands Run
+
+- `.venv/bin/pip install --upgrade -e apps/api` (httpx moved from test-only to a core dependency)
+- `python -m unittest discover apps/api/tests` (16 mocked gateway tests + 2 live-gated, plus existing health contract tests)
+- `docker compose build api` (rebuild image with httpx + gateway code)
+- `docker compose up -d api`
+- `curl http://127.0.0.1:8000/health/integrations` (confirm OpenRouter goes through the real adapter path)
+- `python -m unittest tests.integration.test_mission_api` (regression against the rebuilt container)
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 4 test results:
+
+- Mocked `ModelGateway` unit tests: 16/16 passing. `NOT_CONFIGURED` cases assert zero HTTP calls were made (not just the returned status), using a mock transport handler that raises if invoked.
+- Live test gate (`test_model_gateway_live.py`): 2/2 skipped, correctly, with an explicit reason — no `OPENROUTER_API_KEY` in this environment.
+- `GET /health/integrations` in the rebuilt container: OpenRouter still reports `NOT_CONFIGURED`, now via the real `ModelGateway.health()` call path instead of the Phase 1 placeholder.
+- Existing Phase 2/3 tests (persistence roundtrip, Mission API lifecycle, health contract): all still passing against the rebuilt image.
+- Compile check across all new/changed modules: passed.
 
 ## Local Development Target
 

@@ -89,3 +89,19 @@ Decision: Added `ExecutionEventType.MISSION_STATUS_CHANGED` for the Phase 3 tran
 Rationale: `docs/domain-model.md`'s `ExecutionEvent` type list is headed "Examples," not a closed enumeration, so extending it is within scope. `MISSION_PLANNED` and `MISSION_COMPLETED` specifically imply a real plan was produced or verification actually passed — Phase 3 does neither; it only flips a status field. Reusing those names would make the audit log claim something happened that didn't.
 
 Consequence: Phase 4/5 (planner) should emit `MISSION_PLANNED` when a validated `MissionPlan` is actually produced, and Phase 8/verification should emit `MISSION_COMPLETED` when verification actually passes — both in addition to, not instead of, the generic `MISSION_STATUS_CHANGED` a status-field update always produces. Adding a Postgres enum value requires an `ALTER TYPE ... ADD VALUE` migration; downgrading past it is not supported (Postgres cannot remove an enum value cleanly), so the migration's `downgrade()` raises rather than silently no-op.
+
+## ADR-012: `ModelGateway.estimate_cost()` Never Fabricates a Dollar Figure
+
+Decision: `estimate_cost()` always returns `estimated_cost_usd: None` with an explanatory note, rather than computing a number from OpenRouter's `pricing` field on a model catalog entry.
+
+Rationale: `docs/architecture.md`'s OpenRouter open questions state the usage/cost metadata shape "must be verified against a live response before declaring cost tracking verified." No live response has been seen. Computing a plausible-looking dollar amount from an unverified schema would produce a number that looks authoritative but is a guess — the same failure mode ADR-004 exists to prevent (demo/guessed behavior being mistaken for real integration).
+
+Consequence: `AgentExecution.estimated_cost` (Phase 2's persistence column) will stay `NULL` until this is revisited. Whoever implements real cost tracking must first get a live OpenRouter response, confirm the `pricing` object's actual shape, and update `estimate_cost()` and this ADR together — not just remove the `None` return.
+
+## ADR-013: `ModelGateway.select_model()` Requires an Explicit Preferred-Model List
+
+Decision: `select_model()` raises `ValueError` if called with an empty `preferred_models` list. It does not fall back to any hard-coded default model ID.
+
+Rationale: `docs/architecture.md` explicitly says "Do not hard-code unverified model IDs" and lists "exact model policy defaults require a live model catalog and account limits" as an open question. No model catalog has been fetched live, and no account limits are known, so there is no ID this repo could hard-code responsibly.
+
+Consequence: Whatever calls `select_model()` next (the Capability Resolver, Phase 5) is responsible for sourcing `preferred_models` from `AgentDefinition.preferred_model_policy` or an equivalent live-verified source — not from a constant in this codebase.

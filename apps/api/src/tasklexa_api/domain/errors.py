@@ -14,3 +14,23 @@ class InvalidMissionTransitionError(Exception):
         self.current = current
         self.target = target
         super().__init__(f"Cannot transition mission from {current.value} to {target.value}")
+
+
+class ProviderNotConfiguredError(Exception):
+    def __init__(self, provider: str) -> None:
+        self.provider = provider
+        super().__init__(f"{provider} is not configured; no credential is present")
+
+
+class ProviderCallFailedError(Exception):
+    def __init__(self, provider: str, detail: str) -> None:
+        self.provider = provider
+        self.detail = detail
+        super().__init__(f"{provider} call failed: {detail}")
+
+
+class StructuredOutputValidationError(Exception):
+    def __init__(self, schema_name: str, detail: str) -> None:
+        self.schema_name = schema_name
+        self.detail = detail
+        super().__init__(f"Structured output for schema '{schema_name}' failed validation: {detail}")

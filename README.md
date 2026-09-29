@@ -10,11 +10,12 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 3 (Mission API and state machine) is complete. `POST /missions`,
-`GET /missions`, `GET /missions/{id}`, `POST /missions/{id}/transitions`,
-and `GET /missions/{id}/events` are live, backed by PostgreSQL persistence
-and a deterministic mission state machine. Awaiting approval to begin
-Phase 4 (OpenRouter ModelGateway).
+Phase 4 (OpenRouter ModelGateway) is complete. The adapter reports
+`NOT_CONFIGURED` with zero network calls until `OPENROUTER_API_KEY` is set,
+has full mocked unit test coverage, and a separate live test gate that
+activates automatically once a real credential is present. Nothing calls
+it yet — that starts in Phase 5. Awaiting approval to begin Phase 5
+(Agent Registry and Capability Resolver).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -25,6 +26,7 @@ Phase 4 (OpenRouter ModelGateway).
 - [Phase 1 report](docs/phase-1.md)
 - [Phase 2 report](docs/phase-2.md)
 - [Phase 3 report](docs/phase-3.md)
+- [Phase 4 report](docs/phase-4.md)
 
 ## Local Development
 

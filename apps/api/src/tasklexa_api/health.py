@@ -1,35 +1,23 @@
 import asyncio
-from datetime import UTC, datetime
-from typing import Literal
-
-from pydantic import BaseModel, Field
 
 from tasklexa_api.config import Settings
+from tasklexa_api.integrations.openrouter.gateway import ModelGateway
+from tasklexa_api.schemas.health import (
+    HealthResponse,
+    IntegrationHealth,
+    IntegrationsHealthResponse,
+    IntegrationStatus,
+)
 
-
-IntegrationStatus = Literal["LIVE", "MOCK", "NOT_CONFIGURED", "FAILED"]
-
-
-class IntegrationHealth(BaseModel):
-    provider: str
-    purpose: str
-    status: IntegrationStatus
-    details: str
-    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
-
-class HealthResponse(BaseModel):
-    service: str
-    status: Literal["LIVE"]
-    environment: str
-    phase: str
-    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
-
-class IntegrationsHealthResponse(BaseModel):
-    service: str
-    integrations: list[IntegrationHealth]
-    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+__all__ = [
+    "HealthResponse",
+    "IntegrationHealth",
+    "IntegrationsHealthResponse",
+    "IntegrationStatus",
+    "collect_integration_health",
+    "configured_but_unverified",
+    "tcp_health",
+]
 
 
 async def tcp_health(provider: str, purpose: str, host: str, port: int) -> IntegrationHealth:
@@ -76,17 +64,19 @@ async def collect_integration_health(settings: Settings) -> list[IntegrationHeal
         tcp_health("Neo4j", "Mission relationship graph", settings.neo4j_host, settings.neo4j_bolt_port),
     )
 
+    gateway = ModelGateway(api_key=settings.openrouter_api_key)
+    try:
+        openrouter_health = await gateway.health()
+    finally:
+        await gateway.aclose()
+
     external_checks = [
         configured_but_unverified(
             "Band",
             "Agent collaboration fabric",
             bool(settings.band_api_key or settings.band_agent_key),
         ),
-        configured_but_unverified(
-            "OpenRouter",
-            "Model gateway",
-            bool(settings.openrouter_api_key),
-        ),
+        openrouter_health,
         IntegrationHealth(
             provider="Similarweb",
             purpose="Discoverable digital intelligence tool",
@@ -105,4 +95,3 @@ async def collect_integration_health(settings: Settings) -> list[IntegrationHeal
     ]
 
     return [*local_checks, *external_checks]
-
