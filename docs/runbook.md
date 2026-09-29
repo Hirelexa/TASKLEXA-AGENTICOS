@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 2 complete. Full local startup verified via `docker compose up`, including automatic database migration on container start.
+Status: Phase 3 complete. Mission create/read API live and verified through real HTTP calls against `docker compose up`, backed by a deterministic state machine and the immutable execution-event log.
 
 ## Phase 0 Commands Run
 
@@ -99,6 +99,29 @@ Phase 2 test results:
 - Live persistence roundtrip test: passed (insert Mission, insert ExecutionEvent via `record_event`, confirm mutation rejected, clean up).
 - Existing health contract tests: still passing, unaffected by Phase 2 changes.
 - Compile check across new modules: passed.
+
+## Phase 3 Commands Run
+
+- `.venv/bin/pip install --upgrade -e "apps/api[test]"` (adds `httpx` for API-layer testing)
+- `alembic revision -m "add mission_status_changed event type"` (new Postgres enum value)
+- `alembic upgrade head`
+- `alembic check`
+- `docker compose down -v` then `docker compose up -d --build` (fresh-volume verification, three migrations)
+- `docker compose logs api` (confirm all three migrations run before Uvicorn starts)
+- `python -m unittest tests.integration.test_mission_api`
+- `python -m unittest tests.integration.test_postgres_persistence tests.integration.test_mission_api`
+- `curl -X POST http://127.0.0.1:8000/missions ...` (direct call against the actual running container, not just the test harness)
+- `python -m unittest discover apps/api/tests`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 3 test results:
+
+- Fresh-volume verification: passed. All three migrations (Phase 2's two, plus the new `MISSION_STATUS_CHANGED` enum value) applied automatically via `docker-entrypoint.sh` before Uvicorn started.
+- `alembic check`: passed, no drift.
+- Live Mission API test: passed. Full lifecycle exercised over real HTTP against the running FastAPI app and Compose Postgres — create (201), read (200), list (200, includes created mission), invalid transition DRAFT→COMPLETED (409), valid transition DRAFT→PLANNING (200), event log shows both `MISSION_CREATED` and `MISSION_STATUS_CHANGED`, unknown mission id (404).
+- Direct `curl` against the running `api` container: passed, returned a valid `MissionRead` JSON body.
+- Existing Phase 2 persistence test and health contract tests: still passing, unaffected.
+- Compile check across all new modules: passed.
 
 ## Local Development Target
 

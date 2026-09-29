@@ -73,3 +73,19 @@ Decision: `execution_events` has a Postgres trigger that raises on any `UPDATE` 
 Rationale: ADR-002 requires immutable execution events for audit purposes. Enforcing this only in application code (e.g., no update method) is not sufficient — a future direct SQL fix, admin script, or ORM misuse could silently violate it. A database-level constraint makes the guarantee unconditional.
 
 Consequence: A `Mission` that has any recorded `ExecutionEvent` can never be hard-deleted; it must be moved to `MissionStatus.CANCELLED` instead. No API for hard-deleting missions should be built.
+
+## ADR-010: Mission State Machine Is a Provisional, Total Transition Map
+
+Decision: `docs/domain-model.md` lists `MissionStatus` values but not the allowed transitions between them. Phase 3 defines one explicit map (`tasklexa_api.domain.state_machine.MISSION_TRANSITIONS`) covering every status, including the three terminal states (`COMPLETED`, `FAILED`, `CANCELLED`), which allow no further transitions.
+
+Rationale: "Enforce deterministic transitions" (Phase 3 scope, `docs/architecture.md`) requires *some* map to exist and be enforced now, even though the real transition triggers depend on components that don't exist yet (planner, orchestrator, approval gates).
+
+Consequence: Treat this map as provisional. Phase 8 (Mission Orchestrator) is the actual authority on real transition triggers and may need to revise it — for example, an automatic `RUNNING → WAITING_APPROVAL` transition triggered by a gated `Decision`, rather than only a client-initiated `POST /missions/{id}/transitions` call.
+
+## ADR-011: `MISSION_STATUS_CHANGED` Added as a Generic Execution Event
+
+Decision: Added `ExecutionEventType.MISSION_STATUS_CHANGED` for the Phase 3 transition endpoint, rather than reusing `MISSION_PLANNED` or `MISSION_COMPLETED` from the existing list.
+
+Rationale: `docs/domain-model.md`'s `ExecutionEvent` type list is headed "Examples," not a closed enumeration, so extending it is within scope. `MISSION_PLANNED` and `MISSION_COMPLETED` specifically imply a real plan was produced or verification actually passed — Phase 3 does neither; it only flips a status field. Reusing those names would make the audit log claim something happened that didn't.
+
+Consequence: Phase 4/5 (planner) should emit `MISSION_PLANNED` when a validated `MissionPlan` is actually produced, and Phase 8/verification should emit `MISSION_COMPLETED` when verification actually passes — both in addition to, not instead of, the generic `MISSION_STATUS_CHANGED` a status-field update always produces. Adding a Postgres enum value requires an `ALTER TYPE ... ADD VALUE` migration; downgrading past it is not supported (Postgres cannot remove an enum value cleanly), so the migration's `downgrade()` raises rather than silently no-op.

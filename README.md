@@ -10,10 +10,11 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 2 (domain model and PostgreSQL persistence) is complete. The full
-domain model is migrated automatically on `docker compose up`, with
-immutable execution events enforced at the database level. Awaiting
-approval to begin Phase 3 (Mission API and state machine).
+Phase 3 (Mission API and state machine) is complete. `POST /missions`,
+`GET /missions`, `GET /missions/{id}`, `POST /missions/{id}/transitions`,
+and `GET /missions/{id}/events` are live, backed by PostgreSQL persistence
+and a deterministic mission state machine. Awaiting approval to begin
+Phase 4 (OpenRouter ModelGateway).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -23,6 +24,7 @@ approval to begin Phase 3 (Mission API and state machine).
 - [Architecture decisions](docs/decisions.md)
 - [Phase 1 report](docs/phase-1.md)
 - [Phase 2 report](docs/phase-2.md)
+- [Phase 3 report](docs/phase-3.md)
 
 ## Local Development
 
