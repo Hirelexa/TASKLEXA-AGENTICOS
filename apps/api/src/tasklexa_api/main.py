@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from tasklexa_api.api.agents import router as agents_router
 from tasklexa_api.api.approvals import router as approvals_router
 from tasklexa_api.api.decisions import router as decisions_router
+from tasklexa_api.api.evidence import router as evidence_router
 from tasklexa_api.api.missions import router as missions_router
 from tasklexa_api.api.tasks import orchestrator_router, router as tasks_router
 from tasklexa_api.api.tools import router as tools_router
@@ -33,6 +34,7 @@ app.include_router(orchestrator_router)
 app.include_router(tools_router)
 app.include_router(decisions_router)
 app.include_router(approvals_router)
+app.include_router(evidence_router)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -41,7 +43,7 @@ async def health() -> HealthResponse:
         service=settings.service_name,
         status="LIVE",
         environment=settings.environment,
-        phase="phase-11-verifier",
+        phase="phase-12-mission-control-ui",
     )
 
 

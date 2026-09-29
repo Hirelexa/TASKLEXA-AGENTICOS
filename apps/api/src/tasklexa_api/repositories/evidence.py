@@ -11,3 +11,7 @@ async def list_evidence_for_mission(session: AsyncSession, mission_id: uuid.UUID
         select(Evidence).where(Evidence.mission_id == mission_id).order_by(Evidence.created_at.asc())
     )
     return list(result.scalars().all())
+
+
+async def get_evidence(session: AsyncSession, evidence_id: uuid.UUID) -> Evidence | None:
+    return await session.get(Evidence, evidence_id)
