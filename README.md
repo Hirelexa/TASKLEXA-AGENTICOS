@@ -10,8 +10,10 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 1 local infrastructure is complete and verified under `docker compose up`
-on this machine. Awaiting approval to begin Phase 2.
+Phase 2 (domain model and PostgreSQL persistence) is complete. The full
+domain model is migrated automatically on `docker compose up`, with
+immutable execution events enforced at the database level. Awaiting
+approval to begin Phase 3 (Mission API and state machine).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -20,6 +22,7 @@ on this machine. Awaiting approval to begin Phase 2.
 - [Vultr deployment architecture](docs/vultr-deployment.md)
 - [Architecture decisions](docs/decisions.md)
 - [Phase 1 report](docs/phase-1.md)
+- [Phase 2 report](docs/phase-2.md)
 
 ## Local Development
 

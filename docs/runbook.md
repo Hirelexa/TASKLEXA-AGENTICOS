@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 1 complete. Full local startup verified via `docker compose up`.
+Status: Phase 2 complete. Full local startup verified via `docker compose up`, including automatic database migration on container start.
 
 ## Phase 0 Commands Run
 
@@ -73,6 +73,32 @@ Phase 1 test results:
 - `curl http://127.0.0.1:8000/health` via Compose: `LIVE`.
 - `curl http://127.0.0.1:8000/health/integrations` via Compose: PostgreSQL, Redis, Neo4j `LIVE`; Band, OpenRouter, Similarweb, Vultr `NOT_CONFIGURED`.
 - `curl http://127.0.0.1:3000` via Compose: HTTP 200.
+
+## Phase 2 Commands Run
+
+- `.venv/bin/pip install --upgrade -e apps/api` (adds SQLAlchemy, asyncpg, Alembic)
+- `alembic init migrations` (under `apps/api`)
+- `alembic revision --autogenerate -m "initial domain model"`
+- `alembic revision -m "execution events immutability trigger"` (hand-written trigger DDL)
+- `alembic upgrade head`
+- `alembic check`
+- `docker compose down -v` then `docker compose up -d --build` (fresh-volume verification)
+- `docker compose logs api` (confirm Alembic runs before Uvicorn starts)
+- `docker compose exec postgres psql ... \dt` (table listing)
+- Manual SQL: insert Mission + ExecutionEvent, then attempt `UPDATE`/`DELETE`/cascade-`DELETE` against `execution_events`
+- `python -m unittest tests.integration.test_postgres_persistence`
+- `python -m unittest discover apps/api/tests`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 2 test results:
+
+- Migration autogenerate + apply: passed against the live Compose Postgres, zero manual SQL edits needed for the schema migration.
+- `alembic check`: passed, no drift between ORM models and applied schema.
+- Fresh-volume verification (`docker compose down -v` then `up -d --build`): passed. API container ran both migrations automatically via `docker-entrypoint.sh` before starting Uvicorn; all 12 tables (11 domain tables + `alembic_version`) present with no manual step.
+- Immutability trigger: passed. Direct `UPDATE` and `DELETE` on `execution_events` both rejected; cascade `DELETE` from `missions` also rejected (mission has to be cancelled via status, not deleted, once it has events — see ADR-009).
+- Live persistence roundtrip test: passed (insert Mission, insert ExecutionEvent via `record_event`, confirm mutation rejected, clean up).
+- Existing health contract tests: still passing, unaffected by Phase 2 changes.
+- Compile check across new modules: passed.
 
 ## Local Development Target
 

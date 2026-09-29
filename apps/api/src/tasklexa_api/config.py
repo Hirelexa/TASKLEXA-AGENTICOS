@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    def async_database_url(self) -> str:
+        if self.database_url.startswith("postgresql+asyncpg://"):
+            return self.database_url
+        if self.database_url.startswith("postgresql://"):
+            return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self.database_url
+
 
 @lru_cache
 def get_settings() -> Settings:

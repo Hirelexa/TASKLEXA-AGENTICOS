@@ -1,6 +1,6 @@
 # Integration Status
 
-Status: Phase 1 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verified `LIVE` under Docker Compose. No live external provider integration tests have been run.
+Status: Phase 2 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verified `LIVE` under Docker Compose. PostgreSQL now holds the full migrated domain model with immutable execution events. No live external provider integration tests have been run.
 
 | Provider | Purpose | Documentation | Authentication | Implementation Status | Test Status | Last Verification | Known Limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -8,7 +8,7 @@ Status: Phase 1 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verifi
 | OpenRouter | Model gateway for all LLM requests | https://openrouter.ai/docs/quickstart, https://openrouter.ai/docs/guides/routing/provider-selection, https://openrouter.ai/docs/guides/routing/model-fallbacks, https://openrouter.ai/docs/guides/features/structured-outputs | Bearer API key | `NOT_CONFIGURED` | Not tested | 2026-09-29 docs review | Model IDs, model support for structured outputs, rate limits, and usage/cost response shape must be verified live. |
 | Neo4j | Mission graph projection and relationship queries | https://neo4j.com/docs/python-manual/current/ | Username/password or token depending deployment | Local Compose service verified | `LIVE` under `docker compose up` | 2026-09-29 Phase 1 Compose verification | PostgreSQL remains authoritative. Graph projection repair behavior must be implemented. |
 | Similarweb | Discoverable digital intelligence tool | https://docs.similarweb.com/api-v5/getting-started/authentication, https://docs.similarweb.com/api-v5/api-reference/website-analysis-api, https://developers.similarweb.com/docs/similarweb-mcp | Similarweb API key; MCP access requires confirmation | `NOT_CONFIGURED` | Not tested | 2026-09-29 docs review | Exact MCP transport/tool schema and account availability are unverified. Demo data must be clearly labeled. |
-| PostgreSQL | Transactional application state | Docker Compose local service | Local credentials in `.env`, deployment secrets in Kubernetes | Local Compose service verified | `LIVE` under `docker compose up` | 2026-09-29 Phase 1 Compose verification | Migrations deferred to Phase 2. |
+| PostgreSQL | Transactional application state | Docker Compose local service | Local credentials in `.env`, deployment secrets in Kubernetes | Full domain model migrated (11 tables) | `LIVE`, migrations verified against a fresh volume | 2026-09-29 Phase 2 Compose verification | Mission/Task CRUD API not yet built; that is Phase 3. |
 | Redis | Transient execution state, locks, queues, cache if required | Docker Compose local service | Optional password depending environment | Local Compose service verified | `LIVE` under `docker compose up` | 2026-09-29 Phase 1 Compose verification | Queue semantics not yet selected. |
 | Vultr Kubernetes Engine | Deployment target | https://docs.vultr.com/support/products/vke/can-i-run-kubernetes-on-vultr, https://docs.vultr.com/products/compute/kubernetes/management/connection | Vultr API token and VKE kubeconfig | `NOT_CONFIGURED` | Not tested | 2026-09-29 docs review | No infrastructure may be provisioned without explicit human authorization. |
 
@@ -22,4 +22,4 @@ Status: Phase 1 complete. Local infrastructure (PostgreSQL, Redis, Neo4j) verifi
 
 ## Phase 1 Result
 
-External providers remain `NOT_CONFIGURED`. API and web are locally verified both outside Docker and under `docker compose up`. PostgreSQL, Redis, and Neo4j are `LIVE` under Docker Compose. No mocked integration test is counted as proof of live provider operation.
+External providers remain `NOT_CONFIGURED`. API and web are locally verified both outside Docker and under `docker compose up`. PostgreSQL, Redis, and Neo4j are `LIVE` under Docker Compose, and PostgreSQL now runs the full Phase 2 domain-model migration automatically on container start. No mocked integration test is counted as proof of live provider operation.

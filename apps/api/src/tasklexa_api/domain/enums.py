@@ -1,0 +1,111 @@
+import enum
+
+
+class MissionStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    PLANNING = "PLANNING"
+    ASSEMBLING = "ASSEMBLING"
+    RUNNING = "RUNNING"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
+    VERIFYING = "VERIFYING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class TaskStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    READY = "READY"
+    ASSIGNED = "ASSIGNED"
+    RUNNING = "RUNNING"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class TaskPriority(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class AgentDefinitionStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    DISABLED = "DISABLED"
+    DEPRECATED = "DEPRECATED"
+
+
+class RiskLevel(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class AgentExecutionStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class ToolStatus(str, enum.Enum):
+    AVAILABLE = "AVAILABLE"
+    NOT_CONFIGURED = "NOT_CONFIGURED"
+    DISABLED = "DISABLED"
+    FAILED = "FAILED"
+
+
+class DecisionStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    SUPERSEDED = "SUPERSEDED"
+
+
+class ApprovalStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    MODIFIED = "MODIFIED"
+
+
+class ConflictStatus(str, enum.Enum):
+    DETECTED = "DETECTED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    RESOLVED = "RESOLVED"
+    ESCALATED = "ESCALATED"
+
+
+class VerificationStatus(str, enum.Enum):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    PARTIAL = "PARTIAL"
+
+
+class ExecutionEventType(str, enum.Enum):
+    MISSION_CREATED = "MISSION_CREATED"
+    MISSION_PLANNED = "MISSION_PLANNED"
+    AGENT_SELECTED = "AGENT_SELECTED"
+    AGENT_STARTED = "AGENT_STARTED"
+    AGENT_MESSAGE = "AGENT_MESSAGE"
+    TOOL_SELECTED = "TOOL_SELECTED"
+    TOOL_CALLED = "TOOL_CALLED"
+    TOOL_RESULT = "TOOL_RESULT"
+    EVIDENCE_CREATED = "EVIDENCE_CREATED"
+    DECISION_CREATED = "DECISION_CREATED"
+    APPROVAL_REQUESTED = "APPROVAL_REQUESTED"
+    APPROVAL_GRANTED = "APPROVAL_GRANTED"
+    APPROVAL_REJECTED = "APPROVAL_REJECTED"
+    TASK_FAILED = "TASK_FAILED"
+    TASK_REPLANNED = "TASK_REPLANNED"
+    VERIFICATION_STARTED = "VERIFICATION_STARTED"
+    MISSION_COMPLETED = "MISSION_COMPLETED"
+
+
+class ExecutionEventStatus(str, enum.Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    IN_PROGRESS = "IN_PROGRESS"

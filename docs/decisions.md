@@ -57,3 +57,19 @@ Decision: Similarweb is a tool selected by capability resolution, not a global d
 Rationale: Tasklexa is sector-agnostic; digital intelligence is one possible mission capability.
 
 Consequence: Missions that do not require digital intelligence should never initialize or require Similarweb.
+
+## ADR-008: Inferred Status Enums for Unspecified Domain Fields
+
+Decision: `docs/domain-model.md` defines explicit status enums for `Mission`, `Approval`, and `ToolDefinition`, but not for `Task`, `AgentDefinition`, `AgentExecution`, `Decision`, `Conflict`, or `VerificationReport`. Phase 2 defines reasonable enum values for these in `tasklexa_api/domain/enums.py` so the columns can be typed rather than left as free text.
+
+Rationale: Untyped status columns would let invalid values reach PostgreSQL silently. A typed placeholder, clearly flagged as inferred, is safer than no constraint and cheaper to revise than a text column once real transition rules exist.
+
+Consequence: These specific enum values are not authoritative. Phase 3 (Mission API and state machine) and Phase 8 (Mission Orchestrator) must review and, if needed, migrate them once actual state-transition rules are designed. Treat them as a placeholder, not a locked contract.
+
+## ADR-009: Execution Events Are Immutable at the Database Level
+
+Decision: `execution_events` has a Postgres trigger that raises on any `UPDATE` or `DELETE`, including cascade deletes triggered by removing a parent `Mission` row.
+
+Rationale: ADR-002 requires immutable execution events for audit purposes. Enforcing this only in application code (e.g., no update method) is not sufficient — a future direct SQL fix, admin script, or ORM misuse could silently violate it. A database-level constraint makes the guarantee unconditional.
+
+Consequence: A `Mission` that has any recorded `ExecutionEvent` can never be hard-deleted; it must be moved to `MissionStatus.CANCELLED` instead. No API for hard-deleting missions should be built.
