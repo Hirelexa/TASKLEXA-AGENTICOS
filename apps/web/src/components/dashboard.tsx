@@ -159,8 +159,15 @@ function NewMissionForm({
   const [description, setDescription] = useState("");
   const [createdBy, setCreatedBy] = useState("operator");
   const [successCriteria, setSuccessCriteria] = useState("");
+  const [constraints, setConstraints] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toLines = (value: string) =>
+    value
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -172,10 +179,8 @@ function NewMissionForm({
         objective,
         description: description || undefined,
         created_by: createdBy,
-        success_criteria: successCriteria
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        success_criteria: toLines(successCriteria),
+        constraints: toLines(constraints),
       });
       onCreated(mission);
     } catch (exc) {
@@ -218,12 +223,22 @@ function NewMissionForm({
         <Field label="Description" className="md:col-span-2">
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={2} />
         </Field>
-        <Field label="Success criteria (comma-separated)" className="md:col-span-2">
-          <input
+        <Field label="Success criteria (one per line)">
+          <textarea
             value={successCriteria}
             onChange={(e) => setSuccessCriteria(e.target.value)}
             className="input"
-            placeholder="e.g. identify 3 competitors, must reduce churn by 10%"
+            rows={3}
+            placeholder={"identify 3 competitors\nmust reduce churn by 10%"}
+          />
+        </Field>
+        <Field label="Constraints (one per line)">
+          <textarea
+            value={constraints}
+            onChange={(e) => setConstraints(e.target.value)}
+            className="input"
+            rows={3}
+            placeholder={"budget under $5,000\nmust finish within 2 weeks"}
           />
         </Field>
       </div>
