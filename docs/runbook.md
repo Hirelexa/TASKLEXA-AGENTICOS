@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 7 complete. `BandAdapter` implemented (REST + WebSocket), `NOT_CONFIGURED` (no credential), fully covered by mocked unit tests including the WebSocket dispatch/disconnect lifecycle, with a live test gate ready for whenever a real Band credential exists.
+Status: Phase 8 complete. Mission Orchestrator executes the task dependency graph, dispatches ready tasks, and handles failure/cascade/replan — verified live end to end, including a Redis-backed dispatch lock verified to actually contend against the real Redis container.
 
 ## Phase 0 Commands Run
 
@@ -199,6 +199,29 @@ Phase 7 test results:
 - Live test gate (`test_band_adapter_live.py`): 2/2 skipped, correctly — no `BAND_AGENT_KEY`/`BAND_API_KEY` in this environment. The skip message itself carries the ADR-017 warning about unverified REST paths.
 - `GET /health/integrations` in the rebuilt container: Band still reports `NOT_CONFIGURED`, now via the real `BandAdapter.health()` call path instead of the Phase 1 placeholder.
 - Existing Phase 2–6 regression (persistence, Mission API, Agent Registry, Neo4j graph, health contract, OpenRouter): all still passing against the rebuilt image.
+- Compile check across all new/changed modules: passed.
+
+## Phase 8 Commands Run
+
+- `.venv/bin/pip install --upgrade -e apps/api` (adds the `redis` official Python client)
+- `alembic revision -m "add task_completed event type"` then `alembic upgrade head`
+- `python -m unittest apps.api.tests.test_orchestrator_readiness` (11 pure tests, including cycle detection)
+- `python -m unittest apps.api.tests.test_redis_lock_mocked` (6 tests, hand-rolled fake Redis client)
+- `python -m unittest tests.integration.test_mission_orchestrator` (full lifecycle + Redis lock contention, against real containers)
+- `docker compose down -v` then `docker compose up -d --build` (fresh volumes, five migrations)
+- Full combined run: every mocked test file plus every live integration test file (persistence, Mission API, Agent Registry, Neo4j graph, orchestrator) together in one process
+- `alembic check`
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 8 test results:
+
+- Pure readiness/cycle-detection unit tests: 11/11 passing, no DB dependency. Cycle detection verified against a direct 2-task cycle, a 3-task cycle, a self-dependency, and confirmed to not falsely block unrelated tasks sharing the same mission.
+- Mocked `RedisLock` unit tests: 6/6 passing, no network dependency.
+- Live orchestrator lifecycle test: passing against the actual running containers — dependency-gated dispatch, an unresolvable-capability task correctly reported as `NO_AGENT_AVAILABLE` rather than force-assigned, a failure with a verified-empty cascade list, mission auto-transition to `VERIFYING` fired at exactly the right moment (only once every task settled), replan, a six-event-type audit trail check, and a 409 rejecting a fail attempt on an already-completed task.
+- Live Redis lock contention test: passing — a second lock attempt on the same key genuinely fails against the real Redis container while the first still holds it, not just against the mock.
+- Fresh-volume verification: all five PostgreSQL migrations applied automatically; all containers `healthy`.
+- Full combined regression (every mocked + every live test file across all eight phases, one process): passing.
+- `alembic check`: no drift.
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target

@@ -137,3 +137,19 @@ Decision: `BandAdapter` calls REST paths (`/contexts`, `/contexts/{id}/participa
 Rationale: `docs/architecture.md` explicitly lists "exact SDK package/version and Python async APIs must be inspected before implementation" as an unresolved open question for Band, and no live access to Band's route-level docs was available when this phase was implemented. The choice was between leaving `BandAdapter` unimplemented (failing Phase 7's explicit scope: "Implement BandAdapter after SDK/API inspection") or implementing it against the most defensible REST convention while being loud about what's unverified. This is a materially bigger gap than OpenRouter (Phase 4) or Neo4j (Phase 6), where every called endpoint was directly named in verified docs — this ADR exists specifically because that precedent doesn't hold here and a reader shouldn't assume it does.
 
 Consequence: `BandAdapter` is untrustworthy for real use until someone with actual Band API/SDK access verifies (and likely corrects) the path names and WebSocket auth mechanism — flagged in the adapter's own docstring, in `docs/phase-7.md`, and in the live test gate's skip message, so this warning surfaces at every layer someone might encounter it (code, docs, test output). The `NOT_CONFIGURED` gate means none of this can silently misbehave in the current deployment: without a credential, `BandAdapter` never makes a network call at all.
+
+## ADR-018: `TASK_COMPLETED` Added as a New Execution Event Type
+
+Decision: Added `ExecutionEventType.TASK_COMPLETED`, extending the same "Examples:" list Phase 3's `MISSION_STATUS_CHANGED` ([[ADR-011]]) already extended once.
+
+Rationale: `docs/domain-model.md`'s `ExecutionEvent` examples include `TASK_FAILED` and `TASK_REPLANNED` but nothing for a task finishing normally — without this, the audit trail would be structurally unable to represent the single most common outcome of dispatching a task. Same reasoning as ADR-011: the list is explicitly headed "Examples," not a closed enumeration.
+
+Consequence: Same mechanical consequence as ADR-011 — adding a Postgres enum value requires `ALTER TYPE ... ADD VALUE`, which is not reversible, so the migration's `downgrade()` raises rather than silently no-op.
+
+## ADR-019: Redis Is Used for the Orchestrator's Dispatch Lock, and Only That
+
+Decision: `run_dispatch_cycle()` acquires a per-mission `RedisLock` (`SET NX PX` + token-safe Lua-script release) before mutating any task/agent-execution state, released when the cycle finishes. This is the first thing in this project to use Redis for anything beyond a TCP health check.
+
+Rationale: `docs/architecture.md` names "execution locks" as one of Redis's three stated purposes (alongside orchestration queues and short-lived cache entries), and Phase 8 is the first phase where a race is a real correctness risk: two concurrent `POST /missions/{id}/orchestrator/dispatch` calls for the same mission could otherwise both see the same task as "ready" and double-assign it to two different agents.
+
+Consequence: Only the lock is implemented — no queue, no pub/sub, no background worker consuming a Redis-backed task queue. Building those wasn't warranted by anything in Phase 8's stated scope ("Execute dependency graph. Dispatch ready tasks. Handle failure/replan states.") and would have been speculative infrastructure ahead of an actual need. If a future phase needs an orchestration queue, that's new scope requiring its own design, not an extension of this lock.

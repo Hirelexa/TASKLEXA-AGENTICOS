@@ -10,12 +10,12 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 7 (Band collaboration) is complete. `BandAdapter` implements the full
-documented interface (REST commands plus inbound WebSocket events),
-reporting `NOT_CONFIGURED` with zero network calls until a credential is
-set. The exact REST path names and WebSocket auth scheme are an inferred
-convention pending real API access — see `docs/phase-7.md`. Awaiting
-approval to begin Phase 8 (Mission Orchestrator).
+Phase 8 (Mission Orchestrator) is complete. The orchestrator executes a
+mission's task dependency graph, dispatches ready tasks to agents resolved
+via the Phase 5 Capability Resolver, cascades and replans failures, and
+auto-transitions a mission to `VERIFYING` once every task settles — guarded
+by a Redis-backed lock so concurrent dispatch calls can't race. Awaiting
+approval to begin Phase 9 (Similarweb tool integration).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -30,6 +30,7 @@ approval to begin Phase 8 (Mission Orchestrator).
 - [Phase 5 report](docs/phase-5.md)
 - [Phase 6 report](docs/phase-6.md)
 - [Phase 7 report](docs/phase-7.md)
+- [Phase 8 report](docs/phase-8.md)
 
 ## Local Development
 

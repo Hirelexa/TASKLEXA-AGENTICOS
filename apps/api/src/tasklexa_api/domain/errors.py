@@ -34,3 +34,22 @@ class StructuredOutputValidationError(Exception):
         self.schema_name = schema_name
         self.detail = detail
         super().__init__(f"Structured output for schema '{schema_name}' failed validation: {detail}")
+
+
+class TaskNotFoundError(Exception):
+    def __init__(self, task_id: uuid.UUID) -> None:
+        self.task_id = task_id
+        super().__init__(f"Task {task_id} not found")
+
+
+class InvalidTaskTransitionError(Exception):
+    def __init__(self, task_id: uuid.UUID, detail: str) -> None:
+        self.task_id = task_id
+        self.detail = detail
+        super().__init__(f"Task {task_id}: {detail}")
+
+
+class LockAcquisitionError(Exception):
+    def __init__(self, key: str) -> None:
+        self.key = key
+        super().__init__(f"Could not acquire lock '{key}'; another operation is already in progress")

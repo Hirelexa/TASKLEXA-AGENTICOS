@@ -1,0 +1,49 @@
+# Phase 8 Report
+
+Status: complete. The Mission Orchestrator executes a mission's task dependency graph, dispatches ready tasks to agents resolved via Phase 5's Capability Resolver, and handles failure/cascade/replan states — verified live through a full lifecycle: dependency-gated dispatch, completion, an unresolvable task, cascade-safe failure, mission auto-transition to `VERIFYING` once every task settles, and replan.
+
+## Deliverables
+
+- `tasklexa_api.domain.orchestrator.compute_task_readiness()`: a pure function (no DB, no I/O) that classifies every task in a mission as ready, blocked, in-progress, done, failed, or — genuinely new capability — **cyclic**, using a three-color DFS over the pending-task dependency subgraph. A dependency cycle (including a task depending on itself) is detected and reported rather than silently leaving those tasks blocked forever with no explanation.
+- `tasklexa_api.repositories.orchestrator`:
+  - `run_dispatch_cycle()`: fetches a mission's tasks, computes readiness, resolves an agent for each ready task via Phase 5's `resolve_team()` (reused directly, not reimplemented), creates an `AgentExecution` row and `AGENT_SELECTED`/`AGENT_STARTED` events for each dispatch, and — when every task has settled (`COMPLETED`/`FAILED`/`CANCELLED`) — attempts the mission's `RUNNING → VERIFYING` transition (Phase 3's state machine, unchanged). The whole cycle runs inside a Redis lock (see below) so two concurrent dispatch calls for the same mission can't race into a double assignment.
+  - `complete_task()`: transitions a task to `COMPLETED`, completes its associated `AgentExecution`, and emits a new `TASK_COMPLETED` execution event (added this phase — see Design Notes).
+  - `fail_task()`: transitions a task to `FAILED`, then **eagerly cascades** — walks the mission's task graph to a fixed point, failing every still-`PENDING` task that transitively depends on the failed one, each with its own `TASK_FAILED` event tagged `error_category: cascaded_failure`. Refuses to fail an already-`COMPLETED` or `CANCELLED` task (409).
+  - `replan_task()`: resets a `FAILED` task back to `PENDING` (clearing `assigned_agent`/`actual_output`/`completed_at`) and emits `TASK_REPLANNED`, so the next dispatch cycle can retry it. Only callable on a `FAILED` task.
+- `tasklexa_api.integrations.redis.lock.RedisLock`: a `SET NX PX` distributed lock with token-safe release (a Lua script deletes the key only if it still holds this lock's own token, so a lock that outlives its TTL and gets re-acquired by someone else is never accidentally deleted by the original holder's late `release()`). This is the first thing in the project to actually use Redis for anything beyond a TCP health check — `docs/architecture.md` names "execution locks" as one of Redis's stated purposes, and dispatch is the first place in this codebase where a race is a real correctness risk.
+- `tasklexa_api.integrations.redis.dependency.get_redis_client()`: event-loop-scoped cache, extending [[ADR-014]]'s pattern a third time (engine → Neo4j driver → now Redis client), for the same reason.
+- Task API (new — see Design Notes): `POST /missions/{id}/tasks`, `GET /missions/{id}/tasks`, `GET /missions/{id}/tasks/{task_id}`, plus the lifecycle endpoints `POST .../tasks/{id}/complete`, `.../fail`, `.../replan`, and `POST /missions/{id}/orchestrator/dispatch`.
+- `apps/api/tests/test_orchestrator_readiness.py`: 11 pure unit tests, including direct proof of correct cycle detection (a 2-task cycle, a 3-task cycle, and a task depending on itself) and proof that a cycle doesn't falsely block unrelated tasks in the same mission.
+- `apps/api/tests/test_redis_lock_mocked.py`: 6 tests against a hand-rolled in-memory fake client — acquire/contend/release, the context-manager form, and release-on-exception.
+- `tests/integration/test_mission_orchestrator.py`: two live tests. One drives a complete lifecycle through real HTTP against the actual running app: three tasks (one with an unsatisfiable capability requirement), two dispatch cycles, a completion, an explicit failure with a verified-empty cascade list, a second completion, a third dispatch cycle that proves the mission auto-transitions to `VERIFYING` only once every task has actually settled, a replan, a full audit-trail check across six event types, and a 409 when trying to fail an already-completed task. The other proves the Redis lock actually contends against the real Redis container, not just the fake.
+
+## Design Notes
+
+**A minimal Task API had to be built this phase.** Every prior phase that needed task-like fixtures (Phase 6's graph projection test) inserted rows via direct SQL, because nothing in this codebase actually needed tasks to exist through a normal flow. Phase 8 is different: dispatching tasks *is* the feature, and demonstrating it honestly means creating tasks the way a real caller would — through the API, not a test-only backdoor. `TaskCreate`/`TaskRead` already existed (Phase 2), so this was wiring an existing schema to a new repository and router, not new domain design.
+
+**`TASK_COMPLETED` is a new execution event type**, extending the "Examples:" list in `docs/domain-model.md` the same way Phase 3's `MISSION_STATUS_CHANGED` did — the existing list had `TASK_FAILED` and `TASK_REPLANNED` but no success counterpart, which would have made the audit trail structurally unable to represent "this task finished normally." Added via `ALTER TYPE ... ADD VALUE`, same non-reversible-migration pattern as before.
+
+**Failure cascades eagerly, at fail-time, not lazily at readiness-computation time.** An earlier design considered having `compute_task_readiness()` detect "permanently blocked by a failed dependency" the same way it detects cycles. Cascading eagerly inside `fail_task()` instead is simpler and keeps the pure readiness function scoped to exactly one concern (graph shape, not task-status propagation) — by the time readiness is computed again, a cascade-failed dependent is already `FAILED`, not lingering in some ambiguous "will never resolve" state that then needs its own reporting category.
+
+**Dispatch doesn't check mission status.** `run_dispatch_cycle()` will happily dispatch tasks for a mission that's still `DRAFT`. This is a real, known gap, not an oversight — adding that guard is a small change, but the live test needed to prove the *interesting* behavior (dependency gating, cascade, replan, the `RUNNING → VERIFYING` auto-transition) first, and a status guard is easy to add later without touching anything else. See Known Limitations.
+
+**Replanning a task does not un-cascade its dependents.** If task B was cascade-failed because task A failed, replanning A only resets A — B stays `FAILED` and needs its own explicit replan. Tracking "B failed *because of* A, so replanning A should offer to replan B too" would require provenance tracking this phase doesn't have (the cascade event's `payload.cascaded_from` records it for audit purposes, but nothing reads it back to drive replan). A deliberate scope cut, not a bug.
+
+## Verification Status
+
+- 11 pure readiness/cycle-detection unit tests: passing, zero DB dependency.
+- 6 mocked `RedisLock` unit tests: passing, zero network dependency.
+- Live orchestrator lifecycle test: passing against the actual running containers — every assertion in the Deliverables section above (dependency gating, an unresolvable-capability task correctly reported rather than force-assigned, cascade-empty single failure, mission auto-transition timing, replan, the six-event-type audit trail, and the 409 on double-failing a completed task) was exercised against real Postgres/Redis, not asserted from a mock.
+- Live Redis lock contention test: passing — a second `RedisLock` on the same key genuinely fails to acquire against the real Redis container while the first still holds it.
+- Fresh-volume verification (`docker compose down -v` then `up -d --build`): all five PostgreSQL migrations (Phase 2's two, Phase 3's and this phase's enum additions, Phase 5's seed) applied automatically; all containers `healthy`.
+- Full combined regression — every mocked test file and every live integration test file across all eight phases, run together in one process: all passing.
+- `alembic check`: no drift.
+- `python -m compileall` across all new/changed modules: passed.
+
+## Known Limitations
+
+- **Dispatch does not check mission status** (see Design Notes) — a task can be dispatched even for a `DRAFT` mission. Adding a guard (only dispatch when `mission.status == RUNNING`) is straightforward but wasn't done this phase.
+- **No cancellation cascade.** `fail_task()` cascades failure to dependents; there is no equivalent `cancel_task()`, so a task depending on a `CANCELLED` task (not `FAILED`) will show as `blocked` in the readiness report forever, correctly but without an obvious resolution path — no code silently pretends this is fine, but nothing proactively surfaces it as a distinct problem either.
+- **No automatic/background dispatch loop.** `POST /missions/{id}/orchestrator/dispatch` must be called explicitly — there is no worker process or scheduler polling for ready tasks. This matches Phase 6's graph projection precedent (explicit, idempotent, callable anytime) rather than building queue/worker infrastructure that isn't clearly in Phase 8's three-bullet scope ("Execute dependency graph. Dispatch ready tasks. Handle failure/replan states.").
+- **Replan does not un-cascade dependents** (see Design Notes).
+- **`AgentRuntime`** — the component that would actually have an agent do the task's work (call `ModelGateway`, use tools, produce real `actual_output`) — still doesn't exist anywhere in this codebase. `complete_task()` accepts `actual_output` directly from the caller. This mirrors every other current gap of the same shape (no Mission Compiler either): Phase 8 orchestrates *when* work happens and *who* it's assigned to, not the work itself.
