@@ -10,12 +10,12 @@ through adapters and must be clearly marked as `LIVE`, `MOCK`,
 
 ## Current Phase
 
-Phase 6 (Neo4j Mission Graph) is complete. `GraphService` projects mission
-state from PostgreSQL into Neo4j with idempotent writes — every write is a
-Cypher `MERGE`, so `POST /missions/{id}/graph/project` is both the initial
-projection and its own repair path. `GET /missions/{id}/graph` returns the
-full mission subgraph. Awaiting approval to begin Phase 7 (Band
-collaboration).
+Phase 7 (Band collaboration) is complete. `BandAdapter` implements the full
+documented interface (REST commands plus inbound WebSocket events),
+reporting `NOT_CONFIGURED` with zero network calls until a credential is
+set. The exact REST path names and WebSocket auth scheme are an inferred
+convention pending real API access — see `docs/phase-7.md`. Awaiting
+approval to begin Phase 8 (Mission Orchestrator).
 
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
@@ -29,6 +29,7 @@ collaboration).
 - [Phase 4 report](docs/phase-4.md)
 - [Phase 5 report](docs/phase-5.md)
 - [Phase 6 report](docs/phase-6.md)
+- [Phase 7 report](docs/phase-7.md)
 
 ## Local Development
 

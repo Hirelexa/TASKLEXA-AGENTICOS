@@ -32,7 +32,7 @@ async def health() -> HealthResponse:
         service=settings.service_name,
         status="LIVE",
         environment=settings.environment,
-        phase="phase-6-neo4j-mission-graph",
+        phase="phase-7-band-collaboration",
     )
 
 

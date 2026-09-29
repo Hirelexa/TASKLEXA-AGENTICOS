@@ -1,6 +1,6 @@
 # Runbook
 
-Status: Phase 6 complete. `GraphService` implemented and verified live: idempotent PostgreSQL-to-Neo4j projection, a repair path (same function, called again), and `/health/integrations` performing a real Cypher query for Neo4j.
+Status: Phase 7 complete. `BandAdapter` implemented (REST + WebSocket), `NOT_CONFIGURED` (no credential), fully covered by mocked unit tests including the WebSocket dispatch/disconnect lifecycle, with a live test gate ready for whenever a real Band credential exists.
 
 ## Phase 0 Commands Run
 
@@ -182,6 +182,23 @@ Phase 6 test results:
 - Fresh-volume verification with both PostgreSQL and Neo4j starting empty: all containers `healthy`, all four PostgreSQL migrations applied automatically.
 - Full combined regression (every mocked + every live test file, one process): passing — confirms the event-loop-scoped caching pattern (ADR-014) also covers the new Neo4j driver cache.
 - `alembic check`: no drift (Phase 6 made no PostgreSQL schema changes).
+- Compile check across all new/changed modules: passed.
+
+## Phase 7 Commands Run
+
+- `.venv/bin/pip install --upgrade -e apps/api` (no new dependency — `websockets` was already present transitively via `uvicorn[standard]`)
+- `python -m unittest apps.api.tests.test_band_adapter_mocked` (15 tests, offline, including a hand-rolled fake WebSocket connection for the `subscribe()`/`disconnect()` lifecycle)
+- `docker compose build api` then `docker compose up -d api`
+- `curl http://127.0.0.1:8000/health/integrations` (confirm Band goes through the real adapter path)
+- `python -m unittest tests.integration.test_mission_api tests.integration.test_agent_registry_and_team_plan` (regression against the rebuilt container)
+- `python -m compileall apps/api/src apps/api/tests apps/api/migrations tests/integration`
+
+Phase 7 test results:
+
+- Mocked `BandAdapter` unit tests: 15/15 passing. `NOT_CONFIGURED` cases assert zero HTTP calls (same pattern as Phase 4's OpenRouter tests). The WebSocket test proves actual message dispatch (handler fires only for its matching `event_type`) and actual connection cleanup (`disconnect()` really closes it), using an injected fake connection rather than a real socket.
+- Live test gate (`test_band_adapter_live.py`): 2/2 skipped, correctly — no `BAND_AGENT_KEY`/`BAND_API_KEY` in this environment. The skip message itself carries the ADR-017 warning about unverified REST paths.
+- `GET /health/integrations` in the rebuilt container: Band still reports `NOT_CONFIGURED`, now via the real `BandAdapter.health()` call path instead of the Phase 1 placeholder.
+- Existing Phase 2–6 regression (persistence, Mission API, Agent Registry, Neo4j graph, health contract, OpenRouter): all still passing against the rebuilt image.
 - Compile check across all new/changed modules: passed.
 
 ## Local Development Target

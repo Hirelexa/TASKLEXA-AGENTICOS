@@ -1,6 +1,7 @@
 import asyncio
 
 from tasklexa_api.config import Settings
+from tasklexa_api.integrations.band.adapter import BandAdapter
 from tasklexa_api.integrations.neo4j.dependency import get_graph_service
 from tasklexa_api.integrations.openrouter.gateway import ModelGateway
 from tasklexa_api.schemas.health import (
@@ -66,17 +67,16 @@ async def collect_integration_health(settings: Settings) -> list[IntegrationHeal
     )
 
     gateway = ModelGateway(api_key=settings.openrouter_api_key)
+    band = BandAdapter(api_key=settings.band_agent_key or settings.band_api_key)
     try:
         openrouter_health = await gateway.health()
+        band_health = await band.health()
     finally:
         await gateway.aclose()
+        await band.aclose()
 
     external_checks = [
-        configured_but_unverified(
-            "Band",
-            "Agent collaboration fabric",
-            bool(settings.band_api_key or settings.band_agent_key),
-        ),
+        band_health,
         openrouter_health,
         IntegrationHealth(
             provider="Similarweb",
