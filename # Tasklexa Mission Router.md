@@ -548,3 +548,27 @@ And the same orchestration layer can operate across different industries and bus
 ### Closing line
 
 **“You change the mission. Tasklexa changes the intelligence around it.”**
+
+                BUSINESS GOAL
+                     │
+                     ▼
+                  TASKLEXA
+                     │
+          Understands the mission
+                     │
+          Determines capabilities
+                     │
+             Assembles agents
+                     │
+              Selects tools
+                     │
+              Selects models
+                     │
+          Coordinates execution
+                     │
+            Applies governance
+                     │
+            Verifies outcome
+                     │
+                     ▼
+                  RESULT
